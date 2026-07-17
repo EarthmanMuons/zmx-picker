@@ -139,6 +139,15 @@ else
 	not_ok 'no sessions and no roots prints a hint and exits 1' "rc=$rc out=$out"
 fi
 
+out=$(ZMX_SESSION=beta "$zp" --candidates "$root")
+beta_line=$(grep $'^session\tbeta\t' <<<"$out")
+alpha_line=$(grep $'^session\talpha.1\t' <<<"$out")
+if [[ $beta_line == *$'\t→ beta'* && $alpha_line == *$'\t  alpha.1'* ]]; then
+	ok 'the session zp runs inside gets the arrow marker'
+else
+	not_ok 'the session zp runs inside gets the arrow marker' "$beta_line"
+fi
+
 out=$("$zp" --version)
 if [[ $out == zp\ [0-9]*.[0-9]*.[0-9]* && $out == "$("$zp" -V)" ]]; then
 	ok '--version and -V report the version'

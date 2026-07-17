@@ -71,8 +71,16 @@ candidates() {
 
 		session_dirs+=("$dir")
 
-		printf 'session\t%s\t%-20s  pid:%-8s  clients:%-2s  %s\n' \
-			"$name" "$name" "$pid" "$clients" "$dir"
+		# Mark the session this zp was launched inside, if any,
+		# using the $ZMX_SESSION that zmx injects and the same
+		# arrow marker as zmx list.
+		note='  '
+		if [[ ${ZMX_SESSION:-} == "$name" ]]; then
+			note='→ '
+		fi
+
+		printf 'session\t%s\t%s%-20s  pid:%-8s  clients:%-2s  %s\n' \
+			"$name" "$note" "$name" "$pid" "$clients" "$dir"
 	done < <(zmx list 2>/dev/null || true)
 
 	# Repositories, when any search roots are configured: git
