@@ -21,6 +21,8 @@ sessions() {
 	printf '  name=alpha.2\tpid=12\tclients=0\tcreated=2\tstart_dir=/tmp\n'
 	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tstart_dir=%s\n' \
 		"$ZP_TEST_DIR/root/plain"
+	printf '  name=d.gamma\tpid=14\tclients=0\tcreated=4\tstart_dir=/tmp\n'
+	printf '  name=d.omega.9\tpid=15\tclients=0\tcreated=5\tstart_dir=/tmp\n'
 }
 
 alive() {
@@ -32,9 +34,14 @@ alive() {
 
 case $1 in
 attach | kill)
+	# Like real zmx, apply $ZMX_SESSION_PREFIX to every name argument.
 	cmd=$1
 	shift
-	echo "$(echo "$cmd" | tr '[:lower:]' '[:upper:]'):[$*] PWD:$(pwd)" >>"$log"
+	args=''
+	for name in "$@"; do
+		args="$args ${ZMX_SESSION_PREFIX:-}$name"
+	done
+	echo "$(echo "$cmd" | tr '[:lower:]' '[:upper:]'):[${args# }] PWD:$(pwd)" >>"$log"
 	exit 0
 	;;
 list)

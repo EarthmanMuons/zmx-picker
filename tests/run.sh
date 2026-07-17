@@ -110,6 +110,25 @@ else
 fi
 
 reset_log
+ZMX_SESSION_PREFIX=d. run '' 'gamma' "$enter" >/dev/null || true
+assert_log 'attaching a listed session never re-applies ZMX_SESSION_PREFIX' \
+	'ATTACH:\[d.gamma] PWD:*'
+
+reset_log
+ZMX_SESSION_PREFIX=d. run '' 'zzz-pfx' "$enter" >/dev/null || true
+assert_log 'sessions zp creates do get ZMX_SESSION_PREFIX applied' \
+	'ATTACH:\[d.zzz-pfx] PWD:*'
+
+next=$(ZMX_SESSION_PREFIX=d. /bin/bash -c '
+	eval "$(awk "/^next_session\(\) \{/,/^\}/" "$1")"
+	next_session /x/omega' _ "$zp")
+if [[ $next == omega.10 ]]; then
+	ok 'numbering skips past prefixed sessions when creating'
+else
+	not_ok 'numbering skips past prefixed sessions when creating' "$next"
+fi
+
+reset_log
 touch "$ZP_TEST_DIR/no-sessions"
 rc=0
 out=$("$zp" 2>&1) || rc=$?

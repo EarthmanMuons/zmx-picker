@@ -117,10 +117,13 @@ kill_sessions() {
 
 	[[ ${#names[@]} -gt 0 ]] || return 0
 
-	zmx kill "${names[@]}" 2>/dev/null || true
+	# Listed names are already complete, so keep zmx from applying
+	# $ZMX_SESSION_PREFIX to them again.
+	ZMX_SESSION_PREFIX='' zmx kill "${names[@]}" 2>/dev/null || true
 
 	for _ in 1 2 3 4 5 6 7 8 9 10; do
-		zmx list --short 2>/dev/null | grep -Fxq "${patterns[@]}" || return 0
+		ZMX_SESSION_PREFIX='' zmx list --short 2>/dev/null |
+			grep -Fxq "${patterns[@]}" || return 0
 		sleep 0.1
 	done
 }
@@ -133,9 +136,15 @@ next_session() {
 	base=${path##*/}
 	base=${base//./_}
 
+	# Sessions this creates get $ZMX_SESSION_PREFIX applied by zmx,
+	# so ignore that prefix when counting existing numbers.
 	next=$(
-		zmx list --short 2>/dev/null |
-			awk -v prefix="${base}." '
+		ZMX_SESSION_PREFIX='' zmx list --short 2>/dev/null |
+			awk -v prefix="${base}." -v zprefix="${ZMX_SESSION_PREFIX:-}" '
+				zprefix != "" && index($0, zprefix) == 1 {
+					$0 = substr($0, length(zprefix) + 1)
+				}
+
 				index($0, prefix) == 1 {
 					suffix = substr($0, length(prefix) + 1)
 
@@ -161,7 +170,7 @@ select_session() {
 	# login shell. {1} is the candidate type, {2} its value.
 	local preview_cmd='
 		if test {1} = session; then
-			zmx history {2} | tail -n 200
+			ZMX_SESSION_PREFIX= zmx history {2} | tail -n 200
 		elif test -e {2}/.jj; then
 			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
 				-T "$ZP_JJ_LOG_TEMPLATE"
@@ -227,7 +236,9 @@ select_session() {
 
 		case $type in
 		session)
-			zmx attach "$value"
+			# The listed name is already complete; keep zmx from
+			# applying $ZMX_SESSION_PREFIX to it again.
+			ZMX_SESSION_PREFIX='' zmx attach "$value"
 			;;
 
 		repo)
