@@ -1,0 +1,30 @@
+[zmx-picker.1] ~/src/zmx-picker ❯ shellcheck zp tests/run.sh tests/bin/zmx
+
+[zmx-picker.1] ~/src/zmx-picker ❯ tests/run.sh
+ok   esc cancels with exit 0 and no zmx calls
+ok   enter attaches the matched session
+ok   selecting a repo starts a numbered session inside it
+ok   dots in repo names become underscores in session names
+ok   ctrl-n creates from the query even with a match highlighted
+ok   enter on an unmatched query creates a session
+ok   ctrl-x kills all marked sessions in one call
+ok   --kill ignores repo rows and kills sessions together
+ok   --kill orders the current session last
+ok   candidates strips list markers and annotates session counts
+ok   attaching a listed session never re-applies ZMX_SESSION_PREFIX
+ok   sessions zp creates do get ZMX_SESSION_PREFIX applied
+ok   numbering skips past prefixed sessions when creating
+ok   no sessions and no roots prints a hint and exits 1
+ok   the session zp runs inside gets the arrow marker
+ok   display paths shorten the home dir to ~ while values stay absolute
+ok   --version and -V report the version
+
+17 passed, 0 failed
+
+[zmx-picker.1] ~/src/zmx-picker ❯ zp --version
+zp 0.1.0
+
+[zmx-picker.1] ~/src/zmx-picker ❯ jj describe -m "Degrade repo previews gracefully when git or jj is missing"
+Working copy  (@) : ppkwxzlq 3e8f21c7 Degrade repo previews gracefully when git or jj is missing
+
+[zmx-picker.1] ~/src/zmx-picker ❯

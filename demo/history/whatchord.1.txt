@@ -1,0 +1,72 @@
+[whatchord.1] ~/src/whatchord ❯ flutter run
+Resolving dependencies... (1.3s)
+Downloading packages...
+  _fe_analyzer_shared 99.0.0 (105.0.0 available)
+  analysis_server_plugin 0.3.14 (0.3.20 available)
+  analyzer 12.1.0 (14.1.0 available)
+  analyzer_plugin 0.14.8 (0.14.14 available)
+  build 4.0.7 (4.0.8 available)
+  cli_util 0.4.2 (0.5.1 available)
+  dart_style 3.1.8 (3.1.12 available)
+! flutter_midi_command 1.0.2 from path third_party/flutter_midi_command (overridden)
+  flutter_midi_command_android 1.0.2 (1.0.5 available)
+! flutter_midi_command_ble 1.0.2 from path third_party/flutter_midi_command_ble (overridden)
+  flutter_midi_command_darwin 1.0.2 (1.0.5 available)
+  flutter_midi_command_linux 1.0.2 (1.0.5 available)
+  flutter_midi_command_platform_interface 1.0.2 (1.0.5 available)
+  flutter_midi_command_web 1.0.2 (1.0.5 available)
+  flutter_midi_command_windows 1.0.2 (1.0.5 available)
+  hooks 2.0.2 (2.1.0 available)
+  image 4.8.0 (4.9.1 available)
+  matcher 0.12.19 (0.12.20 available)
+  meta 1.18.0 (1.19.0 available)
+  package_config 2.2.0 (3.0.0 available)
+  package_info_plus 10.2.0 (10.2.1 available)
+  record_use 0.6.0 (1.0.0 available)
+  share_plus 13.2.0 (13.2.1 available)
+  shared_preferences_android 2.4.26 (2.4.27 available)
+  test 1.31.0 (1.31.2 available)
+  test_api 0.7.11 (0.7.13 available)
+  test_core 0.6.17 (0.6.19 available)
+  timezone 0.10.1 (0.11.1 available)
+  uuid 4.5.3 (4.6.0 available)
+  vector_math 2.2.0 (2.4.0 available)
+  xml 6.6.1 (7.0.1 available)
+Got dependencies!
+29 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching lib/main.dart on Aaron’s iPhone in debug mode...
+The following plugins do not support Swift Package Manager for ios:
+  - flutter_pcm_sound
+This will become an error in a future version of Flutter. Please contact the plugin maintainers to request Swift Package Manager adoption.
+Automatically signing iOS for device deployment using specified development team in Xcode project: 8XK492W7QD
+Running pod install...                                           1,652ms
+Running Xcode build...
+Xcode build done.                                           51.3s
+Installing and launching...                                        17.5s
+Syncing files to device Aaron’s iPhone...                          179ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on Aaron’s iPhone is available at: http://127.0.0.1:51637/kPw9zRe2X4A=/
+The Flutter DevTools debugger and profiler on Aaron’s iPhone is available at: http://127.0.0.1:51637/kPw9zRe2X4A=/devtools/?uri=ws://127.0.0.1:51637/kPw9zRe2X4A=/ws
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[] => 1 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[] => 1 merged
+flutter: [MIDI] 16:52:51.843 setup change: deviceAppeared
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command_ble] connection change A45D18C2-73EF-4A81-B0D6-52E90F1C7A38 connected=true
+flutter: [MIDI] 16:52:53.167 setup change: deviceConnected
+flutter: [flutter_midi_command] Handoff: waiting for CoreMIDI counterpart of A45D18C2-73EF-4A81-B0D6-52E90F1C7A38
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [flutter_midi_command] devices: platform=[Session 1(31768452:0,network)] ble=[jam-4e9(A45D18C2-73EF-4A81-B0D6-52E90F1C7A38)] => 2 merged
+flutter: [MGR] connected null/null -> A45D18C2-73EF-4A81-B0D6-52E90F1C7A38/true

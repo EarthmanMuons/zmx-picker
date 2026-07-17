@@ -1,0 +1,4 @@
+# shellcheck shell=bash
+# Prompt for shells the demo's fake zmx attach spawns, matching the
+# ZMX_SESSION prefix convention from the zmx README.
+PS1='\n[$ZMX_SESSION] \w \[\e[38;2;250;179;135m\]❯\[\e[0m\] '

@@ -1,0 +1,18 @@
+[scratch] ~ ❯ curl -s "wttr.in/Spokane?format=3"
+Spokane: ☀️ +84°F
+
+[scratch] ~ ❯ brew update
+Updated 2 taps (homebrew/core and homebrew/cask).
+
+[scratch] ~ ❯ brew outdated
+fzf (0.74.0) < 0.75.1
+jj (0.43.0) < 0.44.0
+
+[scratch] ~ ❯ python3 -m http.server 8080
+Serving HTTP on :: port 8080 (http://[::]:8080/) ...
+::1 - - [17/Jul/2026 10:12:44] "GET / HTTP/1.1" 200 -
+::1 - - [17/Jul/2026 10:12:51] "GET /demo.gif HTTP/1.1" 200 -
+^C
+Keyboard interrupt received, exiting.
+
+[scratch] ~ ❯

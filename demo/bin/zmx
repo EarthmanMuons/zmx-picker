@@ -1,0 +1,31 @@
+#!/bin/sh
+# Fake zmx for rendering the README demo: pretty, stable session data
+# with no real machine state involved.
+
+case $1 in
+list)
+	if [ "${2:-}" = "--short" ]; then
+		printf 'whatchord.1\nzmx-picker.1\nscratch\n'
+	else
+		printf '  name=whatchord.1\tpid=52341\tclients=0\tcreated=1\tstart_dir=%s/src/whatchord\n' "$HOME"
+		printf '  name=zmx-picker.1\tpid=52502\tclients=0\tcreated=2\tstart_dir=%s/src/zmx-picker\n' "$HOME"
+		printf '  name=scratch\tpid=53113\tclients=0\tcreated=3\tstart_dir=%s\n' "$HOME"
+	fi
+	;;
+history)
+	# Colorize the prompt glyph so scrollback matches the live
+	# prompts; the fixture files stay plain text.
+	peach=$(printf '\033[38;2;250;179;135m')
+	reset=$(printf '\033[0m')
+	sed "s/❯/${peach}❯${reset}/g" "$(dirname "$0")/../history/$2.txt" 2>/dev/null
+	;;
+attach)
+	# Like real zmx: land in a fresh shell for the session, with a
+	# prompt that shows the new $ZMX_SESSION.
+	printf '\033[2J\033[H'
+	ZMX_SESSION=$2 exec bash --rcfile "$(dirname "$0")/../bashrc"
+	;;
+*)
+	exit 0
+	;;
+esac
