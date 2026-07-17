@@ -201,12 +201,14 @@ select_session() {
 	local preview_cmd='
 		if test {1} = session; then
 			ZMX_SESSION_PREFIX= zmx history {2} | tail -n 200
-		elif test -e {2}/.jj; then
+		elif test -e {2}/.jj && command -v jj >/dev/null; then
 			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
 				-T "$ZP_JJ_LOG_TEMPLATE"
-		else
+		elif test -e {2}/.git && command -v git >/dev/null; then
 			git -C {2} log --color=always --graph -50 \
 				--format="$ZP_GIT_LOG_FORMAT"
+		else
+			echo "no preview available (install git or jj)"
 		fi
 	'
 
