@@ -8,13 +8,6 @@ set -euo pipefail
 
 version=0.1.0
 
-for cmd in zmx fzf; do
-	if ! command -v "$cmd" >/dev/null; then
-		printf '%s not found\n' "$cmd" >&2
-		exit 1
-	fi
-done
-
 # Absolute path to this script, for fzf reload bindings.
 self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
 
@@ -303,22 +296,23 @@ select_session() {
 	return 0
 }
 
-mode=select
+mode='select'
 case ${1:-} in
 --candidates)
 	# Internal: re-emit the list for fzf reload bindings.
-	mode=candidates
+	mode='candidates'
 	shift
 	;;
 --kill)
 	# Internal: kill sessions for the fzf ctrl-x binding.
-	kill_sessions
-	exit 0
+	mode='kill'
+	shift
 	;;
 -h | --help)
 	printf 'usage: %s [root ...]\n\n' "${0##*/}"
 	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
-	printf 'given as arguments or $ZP_ROOT (colon-separated)\n'
+	printf 'given as arguments or $ZP_ROOT (colon-separated)\n\n'
+	printf 'options: -h/--help, -V/--version\n'
 	exit 0
 	;;
 -V | --version)
@@ -344,8 +338,20 @@ if [[ ${#search_roots[@]} -gt 0 ]]; then
 	done
 fi
 
+for cmd in zmx fzf; do
+	if ! command -v "$cmd" >/dev/null; then
+		printf '%s not found\n' "$cmd" >&2
+		exit 1
+	fi
+done
+
 if [[ $mode == candidates ]]; then
 	candidates
+	exit 0
+fi
+
+if [[ $mode == kill ]]; then
+	kill_sessions
 	exit 0
 fi
 

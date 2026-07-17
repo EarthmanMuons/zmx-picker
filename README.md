@@ -29,6 +29,8 @@ usage: zp [root ...]
 
 zmx-picker - lists zmx sessions, plus repos under any roots
 given as arguments or $ZP_ROOT (colon-separated)
+
+options: -h/--help, -V/--version
 ```
 
 For example, to always pick from repositories under `~/src`, set:
