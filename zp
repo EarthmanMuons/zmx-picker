@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+
+# shellcheck disable=SC2016 # literal $VARs in single quotes are deliberate
 set -euo pipefail
 
 for cmd in zmx fzf; do
@@ -86,7 +88,7 @@ candidates() {
 # Kill the sessions among the candidate lines on stdin, then wait
 # for zmx to drop them so a reload that follows sees the new list.
 kill_sessions() {
-	local type name i
+	local type name
 	local names=()
 	local patterns=()
 
@@ -100,7 +102,7 @@ kill_sessions() {
 
 	zmx kill "${names[@]}" 2>/dev/null || true
 
-	for i in 1 2 3 4 5 6 7 8 9 10; do
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
 		zmx list --short 2>/dev/null | grep -Fxq "${patterns[@]}" || return 0
 		sleep 0.1
 	done
