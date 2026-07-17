@@ -54,6 +54,16 @@ export ZP_JJ_LOG_TEMPLATE='
 '
 export ZP_GIT_LOG_FORMAT='%C(auto)%h %as%d %s'
 
+# Shorten a leading $HOME to ~ for display; result lands in $tilded.
+# A function returning via stdout would cost a subshell per row.
+tilded=''
+tilde() {
+	tilded=$1
+	if [[ $tilded == "$HOME" || $tilded == "$HOME"/* ]]; then
+		tilded="~${tilded#"$HOME"}"
+	fi
+}
+
 candidates() {
 	local name pid clients dir repo count note sdir
 	local session_dirs=()
@@ -79,8 +89,9 @@ candidates() {
 			note='→ '
 		fi
 
+		tilde "$dir"
 		printf 'session\t%s\t%s%-20s  pid:%-8s  clients:%-2s  %s\n' \
-			"$name" "$note" "$name" "$pid" "$clients" "$dir"
+			"$name" "$note" "$name" "$pid" "$clients" "$tilded"
 	done < <(zmx list 2>/dev/null || true)
 
 	# Repositories, when any search roots are configured: git
@@ -105,8 +116,9 @@ candidates() {
 				note=' (1 session)'
 			fi
 
+			tilde "$repo"
 			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
-				"$repo" "${repo##*/}" "$repo" "$note"
+				"$repo" "${repo##*/}" "$tilded" "$note"
 		done < <(
 			scan_repos |
 				sed -E 's,/\.(git|jj)/?$,,' |

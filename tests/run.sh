@@ -148,6 +148,14 @@ else
 	not_ok 'the session zp runs inside gets the arrow marker' "$beta_line"
 fi
 
+out=$(HOME=$ZP_TEST_DIR "$zp" --candidates "$root")
+line=$(grep $'\t'"$root/plain"$'\t' <<<"$out")
+if [[ $line == *'~/root/plain'* && $line == *$'\t'"$root/plain"$'\t'* ]]; then
+	ok 'display paths shorten the home dir to ~ while values stay absolute'
+else
+	not_ok 'display paths shorten the home dir to ~ while values stay absolute' "$line"
+fi
+
 out=$("$zp" --version)
 if [[ $out == zp\ [0-9]*.[0-9]*.[0-9]* && $out == "$("$zp" -V)" ]]; then
 	ok '--version and -V report the version'
