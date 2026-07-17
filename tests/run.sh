@@ -139,5 +139,12 @@ else
 	not_ok 'no sessions and no roots prints a hint and exits 1' "rc=$rc out=$out"
 fi
 
+out=$("$zp" --version)
+if [[ $out == zp\ [0-9]*.[0-9]*.[0-9]* && $out == "$("$zp" -V)" ]]; then
+	ok '--version and -V report the version'
+else
+	not_ok '--version and -V report the version' "$out"
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]

@@ -6,6 +6,8 @@
 # shellcheck disable=SC2016 # literal $VARs in single quotes are deliberate
 set -euo pipefail
 
+version=0.1.0
+
 for cmd in zmx fzf; do
 	if ! command -v "$cmd" >/dev/null; then
 		printf '%s not found\n' "$cmd" >&2
@@ -285,6 +287,10 @@ case ${1:-} in
 	printf 'usage: %s [root ...]\n\n' "${0##*/}"
 	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
 	printf 'given as arguments or $ZP_ROOT (colon-separated)\n'
+	exit 0
+	;;
+-V | --version)
+	printf '%s %s\n' "${0##*/}" "$version"
 	exit 0
 	;;
 esac
