@@ -21,7 +21,7 @@ else
 fi
 
 # Absolute path to this script, for fzf reload bindings.
-self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
 
 # Compact one-line log formats for the repo previews, structured as:
 # id date bookmarks/refs description. Exported so the preview shell
@@ -76,7 +76,7 @@ candidates() {
 			fi
 
 			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
-				"$repo" "$(basename "$repo")" "$repo" "$note"
+				"$repo" "${repo##*/}" "$repo" "$note"
 		done < <(
 			"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" \
 				-x dirname 2>/dev/null |
@@ -113,7 +113,8 @@ next_session() {
 	local base
 	local next
 
-	base=$(basename "$path" | tr . _)
+	base=${path##*/}
+	base=${base//./_}
 
 	next=$(
 		zmx list --short 2>/dev/null |
@@ -250,7 +251,7 @@ case ${1:-} in
 	exit 0
 	;;
 -h | --help)
-	printf 'usage: %s [root ...]\n\n' "$(basename "$0")"
+	printf 'usage: %s [root ...]\n\n' "${0##*/}"
 	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
 	printf 'given as arguments or $ZP_ROOT (colon-separated)\n'
 	exit 0
