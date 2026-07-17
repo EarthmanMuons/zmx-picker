@@ -10,18 +10,28 @@ for cmd in zmx fzf; do
 	fi
 done
 
-# Debian and Ubuntu package fd as fdfind.
+# Absolute path to this script, for fzf reload bindings.
+self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
+
+# Repo scans prefer fd (parallel, several times faster on big trees)
+# but fall back to find, which needs no extra dependency. Debian and
+# Ubuntu package fd as fdfind.
 if command -v fd >/dev/null; then
 	fd=fd
 elif command -v fdfind >/dev/null; then
 	fd=fdfind
 else
-	printf 'fd (or fdfind) not found\n' >&2
-	exit 1
+	fd=''
 fi
 
-# Absolute path to this script, for fzf reload bindings.
-self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
+scan_repos() {
+	if [[ -n $fd ]]; then
+		"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" 2>/dev/null
+	else
+		find "${search_roots[@]}" \
+			\( -name .git -o -name .jj \) -prune -print 2>/dev/null
+	fi
+}
 
 # Compact one-line log formats for the repo previews, structured as:
 # id date bookmarks/refs description. Exported so the preview shell
@@ -85,7 +95,7 @@ candidates() {
 			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
 				"$repo" "${repo##*/}" "$repo" "$note"
 		done < <(
-			"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" 2>/dev/null |
+			scan_repos |
 				sed -E 's,/\.(git|jj)/?$,,' |
 				sort -u
 		)

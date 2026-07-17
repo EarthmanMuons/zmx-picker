@@ -13,8 +13,10 @@ selecting a repository starts a numbered session inside it.
 
 ## Requirements
 
-- [zmx], [fzf] (>= 0.53), and [fd](https://github.com/sharkdp/fd)
-- git and/or [jj](https://github.com/jj-vcs/jj) for repository previews
+- [zmx] and [fzf] (>= 0.51)
+- optional: git and/or [jj](https://github.com/jj-vcs/jj) for repository
+  previews
+- optional: [fd](https://github.com/sharkdp/fd) for faster repository scans
 
 ## Installation
 
