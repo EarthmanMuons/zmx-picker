@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+for cmd in zmx fzf; do
+	if ! command -v "$cmd" >/dev/null; then
+		printf '%s not found\n' "$cmd" >&2
+		exit 1
+	fi
+done
+
+# Debian and Ubuntu package fd as fdfind.
+if command -v fd >/dev/null; then
+	fd=fd
+elif command -v fdfind >/dev/null; then
+	fd=fdfind
+else
+	printf 'fd (or fdfind) not found\n' >&2
+	exit 1
+fi
+
+# Absolute path to this script, for fzf reload bindings.
+self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+
+# Compact one-line log formats for the repo previews, structured as:
+# id date bookmarks/refs description. Exported so the preview shell
+# spawned by fzf can expand them, which spares the script a layer of
+# quote escaping.
+export ZP_JJ_LOG_TEMPLATE='
+	separate(" ",
+		change_id.shortest(8),
+		author.timestamp().format("%Y-%m-%d"),
+		bookmarks,
+		tags,
+		if(empty, "(empty)"),
+		if(description, description.first_line(), "(no description)")
+	) ++ "\n"
+'
+export ZP_GIT_LOG_FORMAT='%C(auto)%h %as%d %s'
+
+candidates() {
+	local name pid clients dir repo count note
+	local session_dirs=''
+
+	# Existing zmx sessions. Lines carry a marker prefix before
+	# name= (e.g. "→ " on the attached session), so strip through
+	# the field labels rather than off the front.
+	while IFS=$'\t' read -r name pid clients _ dir; do
+		name=${name#*name=}
+		pid=${pid#*pid=}
+		clients=${clients#*clients=}
+		dir=${dir#*start_dir=}
+
+		[[ -n $name ]] || continue
+
+		session_dirs+=$dir$'\n'
+
+		printf 'session\t%s\t%-20s  pid:%-8s  clients:%-2s  %s\n' \
+			"$name" "$name" "$pid" "$clients" "$dir"
+	done < <(zmx list 2>/dev/null || true)
+
+	# Repositories, when any search roots are configured: git
+	# (including linked worktrees where .git is a file) and jj
+	# (including workspaces, which may lack a .git). Colocated
+	# repos match both markers, so dedupe.
+	if [[ ${#search_roots[@]} -gt 0 ]]; then
+		while IFS= read -r repo; do
+			count=$(printf '%s' "$session_dirs" | grep -Fxc "$repo" || true)
+
+			note=''
+			if [[ $count -gt 1 ]]; then
+				note=" ($count sessions)"
+			elif [[ $count -eq 1 ]]; then
+				note=' (1 session)'
+			fi
+
+			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
+				"$repo" "$(basename "$repo")" "$repo" "$note"
+		done < <(
+			"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" \
+				-x dirname 2>/dev/null |
+				sort -u
+		)
+	fi
+}
+
+next_session() {
+	local path=$1
+	local base
+	local next
+
+	base=$(basename "$path" | tr . _)
+
+	next=$(
+		zmx list --short 2>/dev/null |
+			awk -v prefix="${base}." '
+				index($0, prefix) == 1 {
+					suffix = substr($0, length(prefix) + 1)
+
+					if (suffix ~ /^[0-9]+$/ && suffix > max)
+						max = suffix
+				}
+
+				END {
+					print max + 1
+				}
+			'
+	)
+
+	printf '%s.%s\n' "$base" "$next"
+}
+
+select_session() {
+	local output rc query key selected
+	local type value
+	local reload_cmd root
+
+	# Runs under `sh -c` via --with-shell, regardless of the user's
+	# login shell. {1} is the candidate type, {2} its value.
+	local preview_cmd='
+		if test {1} = session; then
+			zmx history {2} | tail -n "${FZF_PREVIEW_LINES:-40}"
+		elif test -e {2}/.jj; then
+			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
+				-T "$ZP_JJ_LOG_TEMPLATE"
+		else
+			git -C {2} log --color=always --graph -50 \
+				--format="$ZP_GIT_LOG_FORMAT"
+		fi
+	'
+
+	# Reloads must search the same roots as this invocation.
+	reload_cmd=$(printf '%q --candidates' "$self")
+	if [[ ${#search_roots[@]} -gt 0 ]]; then
+		for root in "${search_roots[@]}"; do
+			reload_cmd+=$(printf ' %q' "$root")
+		done
+	fi
+
+	set +e
+	output=$(
+		candidates |
+			fzf \
+				--delimiter=$'\t' \
+				--with-nth=3.. \
+				--print-query \
+				--expect=ctrl-n \
+				--with-shell='sh -c' \
+				--height=80% \
+				--reverse \
+				--tiebreak=index \
+				--prompt='zmx> ' \
+				--header=$'Enter: select/create\n^N: new from query | ^X: kill' \
+				--bind="ctrl-x:execute-silent(test {1} = session && zmx kill {2})+reload($reload_cmd)" \
+				--preview="$preview_cmd" \
+				--preview-window=right:60%
+	)
+	rc=$?
+	set -e
+
+	if [[ $rc -eq 130 ]]; then
+		# Aborted with Esc or Ctrl-C: a deliberate cancel, not an
+		# error, so exit quietly.
+		return 0
+	fi
+
+	# --print-query and --expect yield: query, pressed key, selection.
+	query=$(sed -n '1p' <<<"$output")
+	key=$(sed -n '2p' <<<"$output")
+	selected=$(sed -n '3p' <<<"$output")
+
+	if [[ $key == ctrl-n && -n $query ]]; then
+		# Force a new session named after the query, even when a
+		# fuzzy match is highlighted.
+		zmx attach "$query"
+		return
+	fi
+
+	if [[ -n $selected ]]; then
+		IFS=$'\t' read -r type value _ <<<"$selected"
+
+		case $type in
+		session)
+			zmx attach "$value"
+			;;
+
+		repo)
+			(
+				cd "$value"
+				zmx attach "$(next_session "$value")"
+			)
+			;;
+
+		*)
+			printf 'Unknown selection type: %s\n' "$type" >&2
+			return 1
+			;;
+		esac
+		return
+	fi
+
+	if [[ -n $query ]]; then
+		# No candidate matched, so use the entered query as a new
+		# session name in the current directory.
+		zmx attach "$query"
+		return
+	fi
+
+	return 0
+}
+
+mode=select
+case ${1:-} in
+--candidates)
+	# Internal: re-emit the list for fzf reload bindings.
+	mode=candidates
+	shift
+	;;
+-h | --help)
+	printf 'usage: %s [root ...]\n\n' "$(basename "$0")"
+	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
+	printf 'given as arguments or $ZP_ROOT (colon-separated)\n'
+	exit 0
+	;;
+esac
+
+if [[ $# -gt 0 ]]; then
+	search_roots=("$@")
+elif [[ -n ${ZP_ROOT:-} ]]; then
+	IFS=':' read -r -a search_roots <<<"$ZP_ROOT"
+else
+	search_roots=()
+fi
+
+if [[ ${#search_roots[@]} -gt 0 ]]; then
+	for root in "${search_roots[@]}"; do
+		if [[ ! -d $root ]]; then
+			printf 'no such directory: %s\n' "$root" >&2
+			exit 1
+		fi
+	done
+fi
+
+if [[ $mode == candidates ]]; then
+	candidates
+	exit 0
+fi
+
+if [[ ${#search_roots[@]} -eq 0 ]] && ! zmx list --short 2>/dev/null | grep -q .; then
+	printf 'no zmx sessions running; start one with `zmx attach <name>`,\n' >&2
+	printf 'or pass repo roots (arguments or $ZP_ROOT) to pick from\n' >&2
+	exit 1
+fi
+
+select_session
