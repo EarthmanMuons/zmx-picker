@@ -141,7 +141,7 @@ select_session() {
 	# login shell. {1} is the candidate type, {2} its value.
 	local preview_cmd='
 		if test {1} = session; then
-			zmx history {2} | tail -n "${FZF_PREVIEW_LINES:-40}"
+			zmx history {2} | tail -n 200
 		elif test -e {2}/.jj; then
 			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
 				-T "$ZP_JJ_LOG_TEMPLATE"
@@ -177,6 +177,7 @@ select_session() {
 				--prompt='zmx> ' \
 				--header=$'Enter: select/create | Tab: mark\n^N: new from query | ^X: kill' \
 				--bind="ctrl-x:execute-silent(printf '%s\n' {+} | $kill_cmd)+reload($reload_cmd)" \
+				--bind="focus:transform:test {1} = session && echo 'change-preview-window(follow)' || echo 'change-preview-window(nofollow)'" \
 				--preview="$preview_cmd" \
 				--preview-window=right:60%
 	)
