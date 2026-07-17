@@ -48,8 +48,9 @@ Inside the picker:
 | Key      | Action                                                                       |
 | -------- | ---------------------------------------------------------------------------- |
 | `Enter`  | Attach the selection, or create a session named after an unmatched query     |
+| `Tab`    | Mark or unmark a session                                                     |
 | `Ctrl-N` | Create a session named after the query, even when a candidate is highlighted |
-| `Ctrl-X` | Kill the highlighted session                                                 |
+| `Ctrl-X` | Kill the marked sessions, or the highlighted one when none are marked        |
 | `Esc`    | Cancel                                                                       |
 
 Sessions created from a repository are named `<repo>.<n>` with the next free

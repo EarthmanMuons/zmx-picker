@@ -83,6 +83,29 @@ candidates() {
 	fi
 }
 
+# Kill the sessions among the candidate lines on stdin, then wait
+# for zmx to drop them so a reload that follows sees the new list.
+kill_sessions() {
+	local type name i
+	local names=()
+	local patterns=()
+
+	while IFS=$'\t' read -r type name _; do
+		[[ $type == session ]] || continue
+		names+=("$name")
+		patterns+=(-e "$name")
+	done
+
+	[[ ${#names[@]} -gt 0 ]] || return 0
+
+	zmx kill "${names[@]}" 2>/dev/null || true
+
+	for i in 1 2 3 4 5 6 7 8 9 10; do
+		zmx list --short 2>/dev/null | grep -Fxq "${patterns[@]}" || return 0
+		sleep 0.1
+	done
+}
+
 next_session() {
 	local path=$1
 	local base
@@ -112,7 +135,7 @@ next_session() {
 select_session() {
 	local output rc query key selected
 	local type value
-	local reload_cmd root
+	local kill_cmd reload_cmd root
 
 	# Runs under `sh -c` via --with-shell, regardless of the user's
 	# login shell. {1} is the candidate type, {2} its value.
@@ -127,6 +150,8 @@ select_session() {
 				--format="$ZP_GIT_LOG_FORMAT"
 		fi
 	'
+
+	kill_cmd=$(printf '%q --kill' "$self")
 
 	# Reloads must search the same roots as this invocation.
 	reload_cmd=$(printf '%q --candidates' "$self")
@@ -147,10 +172,11 @@ select_session() {
 				--with-shell='sh -c' \
 				--height=80% \
 				--reverse \
+				--multi \
 				--tiebreak=index \
 				--prompt='zmx> ' \
-				--header=$'Enter: select/create\n^N: new from query | ^X: kill' \
-				--bind="ctrl-x:execute-silent(test {1} = session && zmx kill {2})+reload($reload_cmd)" \
+				--header=$'Enter: select/create | Tab: mark\n^N: new from query | ^X: kill' \
+				--bind="ctrl-x:execute-silent(printf '%s\n' {+} | $kill_cmd)+reload($reload_cmd)" \
 				--preview="$preview_cmd" \
 				--preview-window=right:60%
 	)
@@ -214,6 +240,11 @@ case ${1:-} in
 	# Internal: re-emit the list for fzf reload bindings.
 	mode=candidates
 	shift
+	;;
+--kill)
+	# Internal: kill sessions for the fzf ctrl-x binding.
+	kill_sessions
+	exit 0
 	;;
 -h | --help)
 	printf 'usage: %s [root ...]\n\n' "$(basename "$0")"
