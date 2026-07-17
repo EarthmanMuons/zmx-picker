@@ -277,7 +277,9 @@ if [[ $mode == candidates ]]; then
 	exit 0
 fi
 
-if [[ ${#search_roots[@]} -eq 0 ]] && ! zmx list --short 2>/dev/null | grep -q .; then
+# Note: no early-exit grep here; with pipefail it would turn the
+# producer's SIGPIPE into a false "no sessions".
+if [[ ${#search_roots[@]} -eq 0 && -z $(zmx list --short 2>/dev/null) ]]; then
 	printf 'no zmx sessions running; start one with `zmx attach <name>`,\n' >&2
 	printf 'or pass repo roots (arguments or $ZP_ROOT) to pick from\n' >&2
 	exit 1
