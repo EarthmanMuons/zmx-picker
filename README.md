@@ -20,6 +20,16 @@ selecting a repository starts a numbered session inside it.
 
 ## Installation
 
+### Homebrew
+
+```sh
+brew install EarthmanMuons/tap/zmx-picker
+```
+
+This installs the `zp` command along with zmx and fzf.
+
+### Manual
+
 Copy the `zp` script somewhere on your `PATH`.
 
 ## Usage
