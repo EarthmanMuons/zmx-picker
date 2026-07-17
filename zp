@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# zp - A fuzzy finder for zmx sessions and repositories.
+# https://github.com/EarthmanMuons/zmx-picker
+
 # shellcheck disable=SC2016 # literal $VARs in single quotes are deliberate
 set -euo pipefail
 
