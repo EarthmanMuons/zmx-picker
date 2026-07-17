@@ -101,6 +101,12 @@ assert_log '--kill ignores repo rows and kills sessions together' \
 	'KILL:\[alpha.1 beta] PWD:*'
 
 reset_log
+printf 'session\talpha.1\tx\nsession\talpha.2\tx\n' |
+	ZMX_SESSION=alpha.1 "$zp" --kill
+assert_log '--kill orders the current session last' \
+	'KILL:\[alpha.2 alpha.1] PWD:*'
+
+reset_log
 out=$("$zp" --candidates "$root")
 if [[ $out == *$'session\talpha.1\t'* && $out == *'(1 session)'* &&
 	$out == *$'\t'"$root/my.repo"$'\t'* ]]; then

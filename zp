@@ -133,12 +133,24 @@ kill_sessions() {
 	local type name
 	local names=()
 	local patterns=()
+	local current=''
 
+	# Killing the session zp runs inside takes down zp and its zmx
+	# client mid-command, so order that one last.
 	while IFS=$'\t' read -r type name _; do
 		[[ $type == session ]] || continue
+		if [[ $name == "${ZMX_SESSION:-}" ]]; then
+			current=$name
+			continue
+		fi
 		names+=("$name")
 		patterns+=(-e "$name")
 	done
+
+	if [[ -n $current ]]; then
+		names+=("$current")
+		patterns+=(-e "$current")
+	fi
 
 	[[ ${#names[@]} -gt 0 ]] || return 0
 
