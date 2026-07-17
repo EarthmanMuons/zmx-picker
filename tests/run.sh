@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+zp=$here/../zp
+
+ZP_TEST_DIR=$(mktemp -d)
+export ZP_TEST_DIR
+trap 'rm -rf "$ZP_TEST_DIR"' EXIT
+
+PATH=$here/bin:$PATH
+export PATH
+unset ZP_ROOT
+
+root=$ZP_TEST_DIR/root
+mkdir -p "$root/plain/.jj" "$root/my.repo/.git"
+
+pass=0
+fail=0
+
+ok() {
+	printf 'ok   %s\n' "$1"
+	pass=$((pass + 1))
+}
+
+not_ok() {
+	printf 'FAIL %s (got: %s)\n' "$1" "$2"
+	fail=$((fail + 1))
+}
+
+log() {
+	cat "$ZP_TEST_DIR/calls.log" 2>/dev/null || true
+}
+
+reset_log() {
+	rm -f "$ZP_TEST_DIR/calls.log"
+}
+
+# assert_log <description> <glob pattern matched against the call log>
+assert_log() {
+	# shellcheck disable=SC2053 # glob matching the pattern is the point
+	if [[ $(log) == $2 ]]; then
+		ok "$1"
+	else
+		not_ok "$1" "$(log)"
+	fi
+}
+
+run() {
+	expect "$here/harness.exp" "$zp" "$@"
+}
+
+esc=$'\x1b'
+enter=$'\r'
+tab=$'\t'
+ctrl_n=$'\x0e'
+ctrl_x=$'\x18'
+
+reset_log
+rc=0
+run '' "$esc" || rc=$?
+if [[ $rc -eq 0 && -z $(log) ]]; then
+	ok 'esc cancels with exit 0 and no zmx calls'
+else
+	not_ok 'esc cancels with exit 0 and no zmx calls' "rc=$rc log=$(log)"
+fi
+
+reset_log
+run '' 'beta' "$enter" >/dev/null || true
+assert_log 'enter attaches the matched session' 'ATTACH:\[beta] PWD:*'
+
+reset_log
+run "$root" 'plain' "$enter" >/dev/null || true
+assert_log 'selecting a repo starts a numbered session inside it' \
+	'ATTACH:\[plain.1] PWD:*/root/plain'
+
+reset_log
+run "$root" 'my.repo' "$enter" >/dev/null || true
+assert_log 'dots in repo names become underscores in session names' \
+	'ATTACH:\[my_repo.1] PWD:*/root/my.repo'
+
+reset_log
+run '' 'bet' "$ctrl_n" >/dev/null || true
+assert_log 'ctrl-n creates from the query even with a match highlighted' \
+	'ATTACH:\[bet] PWD:*'
+
+reset_log
+run '' 'zzz-new' "$enter" >/dev/null || true
+assert_log 'enter on an unmatched query creates a session' \
+	'ATTACH:\[zzz-new] PWD:*'
+
+reset_log
+run '' "$tab$tab" "$ctrl_x" "$esc" >/dev/null || true
+assert_log 'ctrl-x kills all marked sessions in one call' \
+	'KILL:\[alpha.1 alpha.2] PWD:*'
+
+reset_log
+printf 'session\talpha.1\tx\nrepo\t/nope\tx\nsession\tbeta\tx\n' |
+	"$zp" --kill
+assert_log '--kill ignores repo rows and kills sessions together' \
+	'KILL:\[alpha.1 beta] PWD:*'
+
+reset_log
+out=$("$zp" --candidates "$root")
+if [[ $out == *$'session\talpha.1\t'* && $out == *'(1 session)'* &&
+	$out == *$'\t'"$root/my.repo"$'\t'* ]]; then
+	ok 'candidates strips list markers and annotates session counts'
+else
+	not_ok 'candidates strips list markers and annotates session counts' "$out"
+fi
+
+reset_log
+touch "$ZP_TEST_DIR/no-sessions"
+rc=0
+out=$("$zp" 2>&1) || rc=$?
+rm -f "$ZP_TEST_DIR/no-sessions"
+if [[ $rc -eq 1 && $out == *'no zmx sessions running'* ]]; then
+	ok 'no sessions and no roots prints a hint and exits 1'
+else
+	not_ok 'no sessions and no roots prints a hint and exits 1' "rc=$rc out=$out"
+fi
+
+printf '\n%d passed, %d failed\n' "$pass" "$fail"
+[[ $fail -eq 0 ]]

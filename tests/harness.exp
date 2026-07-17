@@ -1,0 +1,42 @@
+#!/usr/bin/env expect
+# Drives zp in a pty. fzf sends cursor-position queries (ESC[6n) and
+# blocks until a terminal answers, so every expect below responds to
+# them; without that the picker stalls and looks like zero matches.
+#
+# Usage: harness.exp <zp-path> <root-or-empty> [keys ...]
+# Each keys argument is sent after a settle period. Exits with zp's
+# exit status.
+
+log_user 0
+
+proc idle {secs} {
+	set timeout $secs
+	expect {
+		-re {\[6n} { send "\033\[40;120R"; exp_continue }
+		timeout {}
+	}
+}
+
+set zp [lindex $argv 0]
+set root [lindex $argv 1]
+
+if {$root eq ""} {
+	spawn -noecho $zp
+} else {
+	spawn -noecho $zp $root
+}
+catch { exec stty rows 40 columns 120 < $spawn_out(slave,name) 2> /dev/null }
+
+foreach keys [lrange $argv 2 end] {
+	idle 2
+	send -- $keys
+}
+
+set timeout 10
+expect {
+	-re {\[6n} { send "\033\[40;120R"; exp_continue }
+	eof {}
+	timeout { catch close }
+}
+catch wait result
+exit [lindex $result 3]

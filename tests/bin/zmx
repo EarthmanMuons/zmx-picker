@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# Fake zmx for the test suite. Serves canned sessions in the real
+# marker-prefixed list format, logs attach/kill calls, and drops
+# killed sessions from later listings so reload paths are exercised.
+# State lives in $ZP_TEST_DIR: calls.log, and a no-sessions flag file.
+
+set -eu
+
+log="${ZP_TEST_DIR:?}/calls.log"
+
+killed() {
+	grep -q "KILL:.*$1" "$log" 2>/dev/null
+}
+
+sessions() {
+	if [ -e "$ZP_TEST_DIR/no-sessions" ]; then
+		return 0
+	fi
+	printf '\342\206\222 name=alpha.1\tpid=11\tclients=1\tcreated=1\tstart_dir=/tmp\n'
+	printf '  name=alpha.2\tpid=12\tclients=0\tcreated=2\tstart_dir=/tmp\n'
+	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tstart_dir=%s\n' \
+		"$ZP_TEST_DIR/root/plain"
+}
+
+alive() {
+	sessions | while IFS='	' read -r first rest; do
+		name=${first#*name=}
+		killed "$name" || printf '%s\t%s\n' "$first" "$rest"
+	done
+}
+
+case $1 in
+attach | kill)
+	cmd=$1
+	shift
+	echo "$(echo "$cmd" | tr '[:lower:]' '[:upper:]'):[$*] PWD:$(pwd)" >>"$log"
+	exit 0
+	;;
+list)
+	if [ "${2:-}" = "--short" ]; then
+		alive | awk -F'\t' '{ sub(/.*name=/, "", $1); print $1 }'
+	else
+		alive
+	fi
+	;;
+history)
+	seq 1 300
+	;;
+*)
+	echo "zmx shim: unhandled command: $*" >&2
+	exit 1
+	;;
+esac
