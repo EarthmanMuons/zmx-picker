@@ -40,8 +40,8 @@ export ZP_JJ_LOG_TEMPLATE='
 export ZP_GIT_LOG_FORMAT='%C(auto)%h %as%d %s'
 
 candidates() {
-	local name pid clients dir repo count note
-	local session_dirs=''
+	local name pid clients dir repo count note sdir
+	local session_dirs=()
 
 	# Existing zmx sessions. Lines carry a marker prefix before
 	# name= (e.g. "→ " on the attached session), so strip through
@@ -54,7 +54,7 @@ candidates() {
 
 		[[ -n $name ]] || continue
 
-		session_dirs+=$dir$'\n'
+		session_dirs+=("$dir")
 
 		printf 'session\t%s\t%-20s  pid:%-8s  clients:%-2s  %s\n' \
 			"$name" "$name" "$pid" "$clients" "$dir"
@@ -66,7 +66,14 @@ candidates() {
 	# repos match both markers, so dedupe.
 	if [[ ${#search_roots[@]} -gt 0 ]]; then
 		while IFS= read -r repo; do
-			count=$(printf '%s' "$session_dirs" | grep -Fxc "$repo" || true)
+			count=0
+			if [[ ${#session_dirs[@]} -gt 0 ]]; then
+				for sdir in "${session_dirs[@]}"; do
+					if [[ $sdir == "$repo" ]]; then
+						count=$((count + 1))
+					fi
+				done
+			fi
 
 			note=''
 			if [[ $count -gt 1 ]]; then
@@ -78,8 +85,8 @@ candidates() {
 			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
 				"$repo" "${repo##*/}" "$repo" "$note"
 		done < <(
-			"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" \
-				-x dirname 2>/dev/null |
+			"$fd" -H -I '^\.(git|jj)$' "${search_roots[@]}" 2>/dev/null |
+				sed -E 's,/\.(git|jj)/?$,,' |
 				sort -u
 		)
 	fi
