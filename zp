@@ -58,15 +58,18 @@ tilde() {
 }
 
 candidates() {
-	local name pid clients dir repo count note sdir
+	local name clients dir repo count note sdir width i
 	local session_dirs=()
+	local names=() notes=() session_clients=()
 
 	# Existing zmx sessions. Lines carry a marker prefix before
 	# name= (e.g. "→ " on the attached session), so strip through
-	# the field labels rather than off the front.
-	while IFS=$'\t' read -r name pid clients _ dir; do
+	# the field labels rather than off the front. Rows are buffered
+	# so the name column can be padded to the widest name instead
+	# of a fixed width.
+	width=0
+	while IFS=$'\t' read -r name _ clients _ dir; do
 		name=${name#*name=}
-		pid=${pid#*pid=}
 		clients=${clients#*clients=}
 		dir=${dir#*start_dir=}
 
@@ -82,17 +85,45 @@ candidates() {
 			note='→ '
 		fi
 
-		tilde "$dir"
-		printf 'session\t%s\t%s%-20s  pid:%-8s  clients:%-2s  %s\n' \
-			"$name" "$note" "$name" "$pid" "$clients" "$tilded"
+		names+=("$name")
+		notes+=("$note")
+		session_clients+=("$clients")
+		if [[ ${#name} -gt $width ]]; then
+			width=${#name}
+		fi
 	done < <(zmx list 2>/dev/null || true)
+
+	for ((i = 0; i < ${#names[@]}; i++)); do
+		tilde "${session_dirs[i]}"
+		printf 'session\t%s\t%s%-*s  clients:%-2s  %s\n' \
+			"${names[i]}" "${notes[i]}" "$width" "${names[i]}" \
+			"${session_clients[i]}" "$tilded"
+	done
 
 	# Repositories, when any search roots are configured: git
 	# (including linked worktrees where .git is a file) and jj
 	# (including workspaces, which may lack a .git). Colocated
-	# repos match both markers, so dedupe.
+	# repos match both markers, so dedupe. sort already buffers
+	# the whole scan, so collecting the rows to size the name
+	# column costs no extra latency.
+	local repos=()
 	if [[ ${#search_roots[@]} -gt 0 ]]; then
+		width=0
 		while IFS= read -r repo; do
+			repos+=("$repo")
+			name=${repo##*/}
+			if [[ ${#name} -gt $width ]]; then
+				width=${#name}
+			fi
+		done < <(
+			scan_repos |
+				sed -E 's,/\.(git|jj)/?$,,' |
+				sort -u
+		)
+	fi
+
+	if [[ ${#repos[@]} -gt 0 ]]; then
+		for repo in "${repos[@]}"; do
 			count=0
 			if [[ ${#session_dirs[@]} -gt 0 ]]; then
 				for sdir in "${session_dirs[@]}"; do
@@ -109,14 +140,16 @@ candidates() {
 				note=' (1 session)'
 			fi
 
-			tilde "$repo"
-			printf 'repo\t%s\t[repo] %-20s  %s%s\n' \
-				"$repo" "${repo##*/}" "$tilded" "$note"
-		done < <(
-			scan_repos |
-				sed -E 's,/\.(git|jj)/?$,,' |
-				sort -u
-		)
+			# The name column already shows the basename, so the
+			# path column shows only the parent directory.
+			dir=${repo%/*}
+			if [[ -z $dir ]]; then
+				dir=/
+			fi
+			tilde "$dir"
+			printf 'repo\t%s\t[repo] %-*s  %s%s\n' \
+				"$repo" "$width" "${repo##*/}" "$tilded" "$note"
+		done
 	fi
 }
 
@@ -231,16 +264,17 @@ select_session() {
 				--print-query \
 				--expect=ctrl-n \
 				--with-shell='sh -c' \
-				--height=80% \
+				--height=90% \
 				--reverse \
 				--multi \
 				--tiebreak=index \
+				--ellipsis='…' \
 				--prompt='zmx> ' \
 				--header=$'Enter: select/create | Tab: mark\n^N: new from query | ^X: kill' \
 				--bind="ctrl-x:execute-silent(printf '%s\n' {+} | $kill_cmd)+reload($reload_cmd)" \
 				--bind="focus:transform:test {1} = session && echo 'change-preview-window(follow)' || echo 'change-preview-window(nofollow)'" \
 				--preview="$preview_cmd" \
-				--preview-window=right:60%
+				--preview-window='right,60%,<55(down,50%)' # <N is the preview's own width: 55 ≈ a 92-column terminal
 	)
 	rc=$?
 	set -e
