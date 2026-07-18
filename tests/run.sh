@@ -85,6 +85,16 @@ assert_log 'ctrl-n creates from the query even with a match highlighted' \
 	'ATTACH:\[bet] PWD:*'
 
 reset_log
+rc=0
+run '' "$tab" "$ctrl_n" >/dev/null || rc=$?
+if [[ $rc -eq 1 && -z $(log) ]]; then
+	ok 'ctrl-n with an empty query errors out, ignoring marks'
+else
+	not_ok 'ctrl-n with an empty query errors out, ignoring marks' \
+		"rc=$rc log=$(log)"
+fi
+
+reset_log
 run '' 'zzz-new' "$enter" >/dev/null || true
 assert_log 'enter on an unmatched query creates a session' \
 	'ATTACH:\[zzz-new] PWD:*'
