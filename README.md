@@ -8,7 +8,7 @@ scrollback previews. When given root directories to search, it also lists any
 git or jj repositories beneath them. Selecting a session attaches to it;
 selecting a repository starts a numbered session inside it.
 
-<img width="2400" height="1120" alt="Animated demo of the zp session picker" src="https://github.com/user-attachments/assets/6bcd625c-916c-48d0-92bb-e7176f2d5b6c" />
+<img width="2400" height="1120" alt="Animated demo of the zp session picker" src="https://github.com/user-attachments/assets/c80ce837-25eb-4c1f-b394-d9f6f1daed54" />
 
 [zmx]: https://github.com/neurosnap/zmx
 [fzf]: https://github.com/junegunn/fzf
