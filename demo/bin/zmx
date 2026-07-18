@@ -4,10 +4,20 @@
 
 case $1 in
 list)
+	# After the tape's attach, $ZMX_SESSION names a session (e.g.
+	# whatchord.2) that the canned data doesn't know; list it as the
+	# attached one so the reopened picker shows a current session.
 	if [ "${2:-}" = "--short" ]; then
-		printf 'whatchord.1\nzmx-picker.1\nscratch\n'
+		printf 'whatchord.1\n'
+		if [ -n "${ZMX_SESSION:-}" ]; then
+			printf '%s\n' "$ZMX_SESSION"
+		fi
+		printf 'zmx-picker.1\nscratch\n'
 	else
 		printf '  name=whatchord.1\tpid=52341\tclients=0\tcreated=1\tstart_dir=%s/src/whatchord\n' "$HOME"
+		if [ -n "${ZMX_SESSION:-}" ]; then
+			printf '\342\206\222 name=%s\tpid=53347\tclients=1\tcreated=4\tstart_dir=%s/src/whatchord\n' "$ZMX_SESSION" "$HOME"
+		fi
 		printf '  name=zmx-picker.1\tpid=52502\tclients=0\tcreated=2\tstart_dir=%s/src/zmx-picker\n' "$HOME"
 		printf '  name=scratch\tpid=53113\tclients=0\tcreated=3\tstart_dir=%s\n' "$HOME"
 	fi

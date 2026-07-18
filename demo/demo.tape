@@ -46,3 +46,12 @@ Type "jj st"
 Sleep 500ms
 Enter
 Sleep 3s
+
+# Reopen the picker from inside the session: whatchord.2 carries
+# the arrow marker and a "you are here" preview.
+Type "zp"
+Sleep 500ms
+Enter
+Sleep 2.5s
+Down
+Sleep 4s
