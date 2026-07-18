@@ -297,11 +297,16 @@ select_session() {
 	key=$(sed -n '2p' <<<"$output")
 	selected=$(sed -n '3p' <<<"$output")
 
-	if [[ $key == ctrl-n && -n $query ]]; then
-		# Force a new session named after the query, even when a
-		# fuzzy match is highlighted.
+	if [[ $key == ctrl-n ]]; then
+		# Ctrl-N means "new from the query": force a session named
+		# after it even when a fuzzy match is highlighted, and never
+		# fall through to marked rows.
+		if [[ -z $query ]]; then
+			printf 'ctrl-n needs a typed query to name the new session\n' >&2
+			return 1
+		fi
 		zmx attach "$query"
-		return
+		return 0
 	fi
 
 	if [[ -n $selected ]]; then
