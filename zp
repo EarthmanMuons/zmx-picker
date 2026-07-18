@@ -277,6 +277,7 @@ select_session() {
 				--ellipsis='…' \
 				--prompt='zmx> ' \
 				--header=$'Enter: select/create | Tab: mark\n^N: new from query | ^X: kill' \
+				--bind='enter:clear-selection+accept' \
 				--bind="ctrl-x:execute-silent(printf '%s\n' {+} | $kill_cmd)+reload($reload_cmd)" \
 				--bind="focus:transform:test {1} = session && echo 'change-preview-window(follow)' || echo 'change-preview-window(nofollow)'" \
 				--preview="$preview_cmd" \
