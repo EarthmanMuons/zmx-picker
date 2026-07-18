@@ -6,7 +6,7 @@
 # shellcheck disable=SC2016 # literal $VARs in single quotes are deliberate
 set -euo pipefail
 
-version=0.1.0
+version=0.2.0
 
 # Absolute path to this script, for fzf reload bindings.
 self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
