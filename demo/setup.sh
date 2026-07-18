@@ -65,7 +65,7 @@ feat: bare bones OAuth workflow for publish is working
 feat: submit multiple scopes for the client
 refactor!: rename all of the media files
 refactor: use rel consistently as short version for relative (path)
-feat: add some type saftey to the group by values
+feat: add some type safety to the group by values
 feat: make mDNS discovery a bit more robust
 feat: distinguish between incoming/outgoing on media inventory
 fix: make sure we skip processed files when filtering
@@ -149,7 +149,7 @@ Make our emitted output naming consistent
 Add script index to our README documentation
 Rename emit_output to emit_github_output for clarity
 Refactor verify-checksums to use main() and structured helpers
-Refactor all scripts to standarize structure and docs
+Refactor all scripts to standardize structure and docs
 Use resolve_repo_root helper function consistently across scripts
 Update verify-checksums to handle multiple patterns
 Standardize format for usage placeholder values
