@@ -233,7 +233,13 @@ select_session() {
 	# login shell. {1} is the candidate type, {2} its value.
 	local preview_cmd='
 		if test {1} = session; then
-			ZMX_SESSION_PREFIX= zmx history {2} | tail -n 200
+			if test {2} = "${ZMX_SESSION:-}"; then
+				# Previewing the session zp itself runs inside
+				# would just show this picker recursively.
+				echo "→ you are here (this is the current session)"
+			else
+				ZMX_SESSION_PREFIX= zmx history {2} | tail -n 200
+			fi
 		elif test -e {2}/.jj && command -v jj >/dev/null; then
 			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
 				-T "$ZP_JJ_LOG_TEMPLATE"

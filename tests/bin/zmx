@@ -52,6 +52,9 @@ list)
 	fi
 	;;
 history)
+	# Logged separately from calls.log so the preview traffic never
+	# disturbs the attach/kill glob assertions.
+	echo "HISTORY:[$2]" >>"$ZP_TEST_DIR/history.log"
 	seq 1 300
 	;;
 *)

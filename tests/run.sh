@@ -154,6 +154,24 @@ else
 	not_ok 'the session zp runs inside gets the arrow marker' "$beta_line"
 fi
 
+rm -f "$ZP_TEST_DIR/history.log"
+run '' "$esc" >/dev/null || true
+if [[ $(cat "$ZP_TEST_DIR/history.log" 2>/dev/null) == *'HISTORY:[alpha.1]'* ]]; then
+	ok 'focusing a session previews its history'
+else
+	not_ok 'focusing a session previews its history' \
+		"$(cat "$ZP_TEST_DIR/history.log" 2>/dev/null || true)"
+fi
+
+rm -f "$ZP_TEST_DIR/history.log"
+ZMX_SESSION=alpha.1 run '' "$esc" >/dev/null || true
+if [[ $(cat "$ZP_TEST_DIR/history.log" 2>/dev/null) != *'HISTORY:[alpha.1]'* ]]; then
+	ok 'the current session skips the recursive history preview'
+else
+	not_ok 'the current session skips the recursive history preview' \
+		"$(cat "$ZP_TEST_DIR/history.log" 2>/dev/null || true)"
+fi
+
 out=$(HOME=$ZP_TEST_DIR "$zp" --candidates "$root")
 line=$(grep $'\t'"$root/plain"$'\t' <<<"$out")
 display=${line##*$'\t'}
