@@ -90,6 +90,11 @@ assert_log 'enter on an unmatched query creates a session' \
 	'ATTACH:\[zzz-new] PWD:*'
 
 reset_log
+run '' "$tab" "$enter" >/dev/null || true
+assert_log 'enter follows the cursor even with other rows marked' \
+	'ATTACH:\[alpha.2] PWD:*'
+
+reset_log
 run '' "$tab$tab" "$ctrl_x" "$esc" >/dev/null || true
 assert_log 'ctrl-x kills all marked sessions in one call' \
 	'KILL:\[alpha.1 alpha.2] PWD:*'
