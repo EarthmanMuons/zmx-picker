@@ -59,7 +59,9 @@ export ZP_ROOT="$HOME/src"
 set -gx ZP_ROOT $HOME/src
 ```
 
-> [!TIP] Bind `zp` to a key for quick access:
+> [!TIP]
+>
+> Bind `zp` to a key for quick access:
 >
 > ```fish
 > # bind Ctrl-\ to zp when not inside a zmx session;
