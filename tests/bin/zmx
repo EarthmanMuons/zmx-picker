@@ -19,7 +19,10 @@ sessions() {
 	fi
 	printf '\342\206\222 name=alpha.1\tpid=11\tclients=1\tcreated=1\tstart_dir=/tmp\n'
 	printf '  name=alpha.2\tpid=12\tclients=0\tcreated=2\tstart_dir=/tmp\n'
-	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tstart_dir=%s\n' \
+	# beta carries labels (trailing tab-separated key=value fields)
+	# and lives in a repo, so it also guards against those fields
+	# leaking into start_dir and breaking the repo-association count.
+	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tstart_dir=%s\tproject=zp\tenv=work\n' \
 		"$ZP_TEST_DIR/root/plain"
 	printf '  name=d.gamma\tpid=14\tclients=0\tcreated=4\tstart_dir=/tmp\n'
 	printf '  name=d.omega.9\tpid=15\tclients=0\tcreated=5\tstart_dir=/tmp\n'

@@ -85,6 +85,10 @@ Sessions created from a repository are named `<repo>.<n>` with the next free
 number and start in the repository's directory; sessions created from a query
 start in the current directory.
 
+Any [zmx] session labels (`zmx set <name> key=value`) are shown alongside each
+session and are fuzzy-searchable, so typing `key=value` narrows the picker to
+the sessions that carry that label.
+
 ## License
 
 zmx-picker is released under the [Zero Clause BSD License](LICENSE) (SPDX:
