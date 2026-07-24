@@ -131,6 +131,16 @@ else
 fi
 
 reset_log
+out=$("$zp" --candidates "$root")
+beta_line=$(grep $'^session\tbeta\t' <<<"$out")
+if [[ $beta_line == *'project=zp env=work'* ]]; then
+	ok 'session labels are surfaced in the searchable display column'
+else
+	not_ok 'session labels are surfaced in the searchable display column' \
+		"$beta_line"
+fi
+
+reset_log
 ZMX_SESSION_PREFIX=d. run '' 'gamma' "$enter" >/dev/null || true
 assert_log 'attaching a listed session never re-applies ZMX_SESSION_PREFIX' \
 	'ATTACH:\[d.gamma] PWD:*'

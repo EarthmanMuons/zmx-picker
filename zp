@@ -58,9 +58,9 @@ tilde() {
 }
 
 candidates() {
-	local name clients dir repo count note sdir width i
+	local name clients dir labels repo count note labelcol sdir width i
 	local session_dirs=()
-	local names=() notes=() session_clients=()
+	local names=() notes=() session_clients=() session_labels=()
 
 	# Existing zmx sessions. Lines carry a marker prefix before
 	# name= (e.g. "→ " on the attached session), so strip through
@@ -68,10 +68,16 @@ candidates() {
 	# so the name column can be padded to the widest name instead
 	# of a fixed width.
 	width=0
-	while IFS=$'\t' read -r name _ clients _ dir; do
+	while IFS=$'\t' read -r name _ clients _ dir labels; do
 		name=${name#*name=}
 		clients=${clients#*clients=}
 		dir=${dir#*start_dir=}
+		# Any session labels arrive as extra tab-separated key=value
+		# fields after start_dir; slurping them into their own field
+		# keeps a stray tab out of $dir, which would corrupt the path
+		# and the start_dir match behind repo session counts. Join
+		# them with spaces for display; absent labels leave it empty.
+		labels=${labels//$'\t'/ }
 
 		[[ -n $name ]] || continue
 
@@ -88,6 +94,7 @@ candidates() {
 		names+=("$name")
 		notes+=("$note")
 		session_clients+=("$clients")
+		session_labels+=("$labels")
 		if [[ ${#name} -gt $width ]]; then
 			width=${#name}
 		fi
@@ -95,9 +102,15 @@ candidates() {
 
 	for ((i = 0; i < ${#names[@]}; i++)); do
 		tilde "${session_dirs[i]}"
-		printf 'session\t%s\t%s%-*s  clients:%-2s  %s\n' \
+		# Trailing label column, shown only when the session has
+		# labels so unlabeled rows keep their current shape.
+		labelcol=''
+		if [[ -n ${session_labels[i]} ]]; then
+			labelcol="  ${session_labels[i]}"
+		fi
+		printf 'session\t%s\t%s%-*s  clients:%-2s  %s%s\n' \
 			"${names[i]}" "${notes[i]}" "$width" "${names[i]}" \
-			"${session_clients[i]}" "$tilded"
+			"${session_clients[i]}" "$tilded" "$labelcol"
 	done
 
 	# Repositories, when any search roots are configured: git
