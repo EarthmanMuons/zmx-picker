@@ -237,6 +237,14 @@ next_session() {
 	printf '%s.%s\n' "$base" "$next"
 }
 
+attach() {
+	if [[ $mode == print ]]; then
+		printf '%s\0%s\0' "$PWD" "${ZMX_SESSION_PREFIX:-}$1"
+	else
+		zmx attach "$1"
+	fi
+}
+
 select_session() {
 	local output rc query key selected
 	local type value
@@ -318,7 +326,7 @@ select_session() {
 			printf 'ctrl-n needs a typed query to name the new session\n' >&2
 			return 1
 		fi
-		zmx attach "$query"
+		attach "$query"
 		return 0
 	fi
 
@@ -329,13 +337,13 @@ select_session() {
 		session)
 			# The listed name is already complete; keep zmx from
 			# applying $ZMX_SESSION_PREFIX to it again.
-			ZMX_SESSION_PREFIX='' zmx attach "$value"
+			ZMX_SESSION_PREFIX='' attach "$value"
 			;;
 
 		repo)
 			(
 				cd "$value"
-				zmx attach "$(next_session "$value")"
+				attach "$(next_session "$value")"
 			)
 			;;
 
@@ -350,7 +358,7 @@ select_session() {
 	if [[ -n $query ]]; then
 		# No candidate matched, so use the entered query as a new
 		# session name in the current directory.
-		zmx attach "$query"
+		attach "$query"
 		return
 	fi
 
@@ -369,11 +377,18 @@ case ${1:-} in
 	mode='kill'
 	shift
 	;;
+--print)
+	# Print the selection as NUL-terminated start_dir and session_name
+	# instead of attaching. session_name is complete, callers should set
+	# ZMX_SESSION_PREFIX=.
+	mode='print'
+	shift
+	;;
 -h | --help)
 	printf 'usage: %s [root ...]\n\n' "${0##*/}"
 	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
 	printf 'given as arguments or $ZP_ROOT (colon-separated)\n\n'
-	printf 'options: -h/--help, -V/--version\n'
+	printf 'options: --print, -h/--help, -V/--version\n'
 	exit 0
 	;;
 -V | --version)
