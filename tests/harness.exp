@@ -3,9 +3,9 @@
 # blocks until a terminal answers, so every expect below responds to
 # them; without that the picker stalls and looks like zero matches.
 #
-# Usage: harness.exp <zp-path> <root-or-empty> [keys ...]
+# Usage: harness.exp <zp-path> [--print] <root-or-empty> [keys ...]
 # Each keys argument is sent after a settle period. Exits with zp's
-# exit status.
+# exit status. With --print, captures stdout in $ZP_TEST_DIR/selection.
 
 log_user 0
 
@@ -18,16 +18,25 @@ proc idle {secs} {
 }
 
 set zp [lindex $argv 0]
-set root [lindex $argv 1]
+set argv [lrange $argv 1 end]
+set print_mode [expr {[lindex $argv 0] eq "--print"}]
+if {$print_mode} {
+	set argv [lrange $argv 1 end]
+}
+set root [lindex $argv 0]
+set roots {}
+if {$root ne ""} {
+	lappend roots $root
+}
 
-if {$root eq ""} {
-	spawn -noecho $zp
+if {$print_mode} {
+	spawn -noecho sh -c {exec "$@" > "$ZP_TEST_DIR/selection"} sh $zp --print {*}$roots
 } else {
-	spawn -noecho $zp $root
+	spawn -noecho $zp {*}$roots
 }
 catch { exec stty rows 40 columns 120 < $spawn_out(slave,name) 2> /dev/null }
 
-foreach keys [lrange $argv 2 end] {
+foreach keys [lrange $argv 1 end] {
 	idle 2
 	send -- $keys
 }
