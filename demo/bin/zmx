@@ -14,12 +14,12 @@ list)
 		fi
 		printf 'zmx-picker.1\nscratch\n'
 	else
-		printf '  name=whatchord.1\tpid=52341\tclients=0\tcreated=1\tstart_dir=%s/src/whatchord\n' "$HOME"
+		printf '  name=whatchord.1\tpid=52341\tclients=0\tcreated=1\tcwd=%s/src/whatchord\n' "$HOME"
 		if [ -n "${ZMX_SESSION:-}" ]; then
-			printf '\342\206\222 name=%s\tpid=53347\tclients=1\tcreated=4\tstart_dir=%s/src/whatchord\n' "$ZMX_SESSION" "$HOME"
+			printf '\342\206\222 name=%s\tpid=53347\tclients=1\tcreated=4\tcwd=%s/src/whatchord\n' "$ZMX_SESSION" "$HOME"
 		fi
-		printf '  name=zmx-picker.1\tpid=52502\tclients=0\tcreated=2\tstart_dir=%s/src/zmx-picker\n' "$HOME"
-		printf '  name=scratch\tpid=53113\tclients=0\tcreated=3\tstart_dir=%s\n' "$HOME"
+		printf '  name=zmx-picker.1\tpid=52502\tclients=0\tcreated=2\tcwd=%s/src/zmx-picker\n' "$HOME"
+		printf '  name=scratch\tpid=53113\tclients=0\tcreated=3\tcwd=%s\n' "$HOME"
 	fi
 	;;
 history)

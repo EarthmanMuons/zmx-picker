@@ -71,11 +71,17 @@ candidates() {
 	while IFS=$'\t' read -r name _ clients _ dir labels; do
 		name=${name#*name=}
 		clients=${clients#*clients=}
+		# zmx >= 0.8.0 reports the live working directory as cwd=
+		# (tracked via OSC 7); older versions reported the directory
+		# the session was created in as start_dir=. Accept either so
+		# the path column and repo session counts keep working.
+		dir=${dir#*cwd=}
 		dir=${dir#*start_dir=}
 		# Any session labels arrive as extra tab-separated key=value
-		# fields after start_dir; slurping them into their own field
-		# keeps a stray tab out of $dir, which would corrupt the path
-		# and the start_dir match behind repo session counts. Join
+		# fields after the directory; slurping them into their own
+		# field keeps a stray tab out of $dir, which would corrupt
+		# the path and the cwd match behind repo session counts. Join
+		# them with spaces for display; absent labels leave it empty.
 		# them with spaces for display; absent labels leave it empty.
 		labels=${labels//$'\t'/ }
 
