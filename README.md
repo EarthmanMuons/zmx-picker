@@ -37,12 +37,16 @@ Copy the `zp` script somewhere on your `PATH`.
 ## Usage
 
 ```
-usage: zp [root ...]
+usage: zp [--print] [root ...]
 
 zmx-picker - lists zmx sessions, plus repos under any roots
 given as arguments or $ZP_ROOT (colon-separated)
 
-options: -h/--help, -V/--version
+options:
+  --print        Print directory and complete session name, each NUL-terminated,
+                 instead of attaching; cancellation emits nothing
+  -h, --help     Show this help message
+  -V, --version  Print the version
 ```
 
 For example, to always pick from repositories under `~/src`, set:
@@ -88,6 +92,33 @@ start in the current directory.
 Any [zmx] session labels (`zmx set <name> key=value`) are shown alongside each
 session and are fuzzy-searchable, so typing `key=value` narrows the picker to
 the sessions that carry that label.
+
+### Selecting without attaching
+
+Use `zp --print [root ...]` to select a session for another command, such as an
+autossh wrapper that reconnects to the same selection. Selecting an entry prints
+two NUL-terminated fields to stdout, with no trailing newline:
+
+1. The directory from which to attach: the repository directory when selecting a
+   repository, or the directory where `zp` was launched when selecting an
+   existing session or typing a name. This is not the selected session's
+   original starting directory or its live `cwd` reported by zmx.
+2. The complete session name, including `ZMX_SESSION_PREFIX` when set. Clear
+   that variable when attaching so zmx does not apply the prefix again.
+
+Selection does not create or attach a session. Esc or Ctrl-C cancels with exit
+status 0 and no output. The picker still supports Ctrl-X to kill sessions.
+
+In Bash, read the fields directly; command substitution (`$(zp --print)`) cannot
+preserve NUL bytes. For example, to attach to the selection:
+
+```bash
+if { IFS= read -r -d '' start_dir && IFS= read -r -d '' session_name; } < <(zp --print); then
+    (cd "$start_dir" && ZMX_SESSION_PREFIX= zmx attach "$session_name")
+fi
+```
+
+The reads fail on cancellation, so the example does not attach in that case.
 
 ## License
 

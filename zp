@@ -391,10 +391,14 @@ case ${1:-} in
 	shift
 	;;
 -h | --help)
-	printf 'usage: %s [root ...]\n\n' "${0##*/}"
+	printf 'usage: %s [--print] [root ...]\n\n' "${0##*/}"
 	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
 	printf 'given as arguments or $ZP_ROOT (colon-separated)\n\n'
-	printf 'options: --print, -h/--help, -V/--version\n'
+	printf 'options:\n'
+	printf '  --print        Print directory and complete session name, each NUL-terminated,\n'
+	printf '                 instead of attaching; cancellation emits nothing\n'
+	printf '  -h, --help     Show this help message\n'
+	printf '  -V, --version  Print the version\n'
 	exit 0
 	;;
 -V | --version)

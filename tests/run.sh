@@ -214,5 +214,43 @@ else
 	not_ok '--version and -V report the version' "$out"
 fi
 
+# Compare files to preserve NUL delimiters and catch any extra stdout.
+# assert_print <description> <root> <query> <key> <directory> <session>
+# An empty expected directory means cancellation should emit no bytes.
+assert_print() {
+	local description=$1 rc=0
+	reset_log
+	rm -f "$ZP_TEST_DIR/selection"
+	: >"$ZP_TEST_DIR/expected"
+	if [[ -n $5 ]]; then
+		printf '%s\0%s\0' "$5" "$6" >"$ZP_TEST_DIR/expected"
+	fi
+	run --print "$2" "$3" "$4" || rc=$?
+	if [[ $rc -eq 0 && -z $(log) ]] &&
+		cmp -s "$ZP_TEST_DIR/expected" "$ZP_TEST_DIR/selection"; then
+		ok "$description"
+	else
+		not_ok "$description" "rc=$rc log=$(log); output bytes: $(od -An -tx1 "$ZP_TEST_DIR/selection" 2>/dev/null)"
+	fi
+}
+
+ZMX_SESSION_PREFIX='' assert_print '--print emits the caller directory and existing name without attaching' \
+	'' 'beta' "$enter" "$PWD" beta
+ZMX_SESSION_PREFIX=d. assert_print '--print never re-applies the prefix to an existing name' \
+	'' 'gamma' "$enter" "$PWD" d.gamma
+ZMX_SESSION_PREFIX='' assert_print '--print emits an unmatched query without attaching' \
+	'' 'zzz-new' "$enter" "$PWD" zzz-new
+ZMX_SESSION_PREFIX=d. assert_print '--print prefixes an unmatched query' \
+	'' 'zzz-new' "$enter" "$PWD" d.zzz-new
+ZMX_SESSION_PREFIX=d. assert_print '--print ctrl-n uses the query even with a match highlighted' \
+	'' 'bet' "$ctrl_n" "$PWD" d.bet
+
+print_root="$ZP_TEST_DIR/root with spaces"
+mkdir -p "$print_root/omega/.git"
+ZMX_SESSION_PREFIX=d. assert_print '--print preserves repo paths with spaces and numbers prefixed sessions' \
+	"$print_root" '[repo] omega' "$enter" "$print_root/omega" d.omega.10
+assert_print '--print cancellation exits successfully with no output or attach' \
+	'' '' "$esc" '' ''
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
