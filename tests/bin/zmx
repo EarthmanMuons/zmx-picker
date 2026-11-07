@@ -29,6 +29,13 @@ sessions() {
 	# percent-encoded with no host, which means this machine.
 	printf '  name=d.gamma\tpid=14\tclients=0\tcreated=4\tcwd=file://elsewhere.example/tmp\n'
 	printf '  name=d.omega.9\tpid=15\tclients=0\tcreated=5\tcwd=file:///tmp/a%%20b\n'
+	# A daemon zmx cannot probe, e.g. one from an older protocol.
+	# With a stand-in daemon pid recorded, it lasts only as long
+	# as that process, as a real one does once killed.
+	pidfile=$ZP_TEST_DIR/stale.pid
+	if [ ! -e "$pidfile" ] || kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+		printf '  name=old.3\terr=Unexpected\tstatus=unreachable\n'
+	fi
 }
 
 alive() {
@@ -52,10 +59,14 @@ attach | kill)
 	;;
 list)
 	if [ "${2:-}" = "--short" ]; then
-		alive | awk -F'\t' '{ sub(/.*name=/, "", $1); print $1 }'
+		# Like real zmx, --short leaves out unreachable sessions.
+		alive | awk -F'\t' '!/status=/ { sub(/.*name=/, "", $1); print $1 }'
 	else
 		alive
 	fi
+	;;
+version)
+	printf 'zmx\t\t1.0.1\nsocket_dir\t%s\n' "$ZP_TEST_DIR/sock"
 	;;
 history)
 	# Logged separately from calls.log so the preview traffic never

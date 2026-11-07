@@ -8,8 +8,10 @@ set -euo pipefail
 
 version=0.4.0
 
-# Absolute path to this script, for fzf reload bindings.
+# Absolute path to this script, for fzf reload bindings and
+# previews.
 self=$(cd "$(dirname "$0")" && pwd)/${0##*/}
+export ZP_SELF=$self
 
 # Repo scans prefer fd (parallel, several times faster on big trees)
 # but fall back to find, which needs no extra dependency. Debian and
@@ -104,6 +106,7 @@ candidates() {
 	local name clients dir labels repo count note labelcol sdir width i
 	local session_dirs=()
 	local names=() notes=() session_clients=() session_labels=()
+	local stale_names=() stale_reasons=()
 
 	# Existing zmx sessions. Lines carry a marker prefix before
 	# name= (e.g. "→ " on the attached session), so strip through
@@ -111,8 +114,23 @@ candidates() {
 	# so the name column can be padded to the widest name instead
 	# of a fixed width.
 	width=0
-	while IFS=$'\t' read -r name _ clients _ dir labels; do
+	while IFS=$'\t' read -r name pid clients _ dir labels; do
 		name=${name#*name=}
+		[[ -n $name ]] || continue
+
+		# zmx lists sessions it cannot probe as name=, err=, status=
+		# only, e.g. a daemon left running by a zmx with an older,
+		# incompatible IPC protocol. Attaching would fail, so list
+		# them under their own type with the reason instead.
+		if [[ $pid == err=* ]]; then
+			stale_names+=("$name")
+			stale_reasons+=("${clients#status=} (${pid})")
+			if [[ ${#name} -gt $width ]]; then
+				width=${#name}
+			fi
+			continue
+		fi
+
 		clients=${clients#*clients=}
 		# zmx >= 0.8.0 reports the live working directory as cwd=
 		# (tracked via OSC 7); older versions reported the directory
@@ -128,8 +146,6 @@ candidates() {
 		# the path and the cwd match behind repo session counts. Join
 		# them with spaces for display; absent labels leave it empty.
 		labels=${labels//$'\t'/ }
-
-		[[ -n $name ]] || continue
 
 		session_dirs+=("$dir")
 
@@ -161,6 +177,11 @@ candidates() {
 		printf 'session\t%s\t%s%-*s  clients:%-2s  %s%s\n' \
 			"${names[i]}" "${notes[i]}" "$width" "${names[i]}" \
 			"${session_clients[i]}" "$tilded" "$labelcol"
+	done
+	for ((i = 0; i < ${#stale_names[@]}; i++)); do
+		printf 'stale\t%s\t  %-*s  %s\n' \
+			"${stale_names[i]}" "$width" "${stale_names[i]}" \
+			"${stale_reasons[i]}"
 	done
 
 	# Repositories, when any search roots are configured: git
@@ -216,17 +237,101 @@ candidates() {
 	fi
 }
 
+# Print the pid of the daemon behind a session zmx cannot reach: the
+# process named zmx, owned by this user, that holds the session's
+# socket. lsof -F gives one field per line (p<pid>, n<name>). macOS
+# names a unix socket by its path alone, while Linux appends a space
+# and the socket type, so accept exactly those two forms; a looser
+# prefix match would let "project" match "project branch". Prints
+# nothing, successfully, when zmx or lsof fails or nothing matches.
+daemon_pid() {
+	local name=$1 dir out
+	command -v lsof >/dev/null || return 0
+	dir=$(zmx version 2>/dev/null) || return 0
+	dir=$(awk -F'\t+' '$1 == "socket_dir" { print $2 }' <<<"$dir")
+	[[ -n $dir ]] || return 0
+	# Capture everything first: lsof exits nonzero on no match, and
+	# a reader that stops early would cost it a SIGPIPE.
+	out=$(lsof -a -U -c zmx -u "$(id -u)" -Fpn 2>/dev/null) || true
+	[[ -n $out ]] || return 0
+	awk -v path="$dir/$name" '
+		/^p/ { pid = substr($0, 2) }
+		/^n/ && found == "" {
+			n = substr($0, 2)
+			if (n == path) {
+				found = pid
+			} else if (index(n, path " ") == 1) {
+				rest = substr(n, length(path) + 2)
+				if (rest ~ /^type=[A-Z]+( \([A-Z]+\))?$/)
+					found = pid
+			}
+		}
+		END { if (found != "") print found }
+	' <<<"$out"
+}
+
+# Explain a session zmx cannot reach, for the picker preview.
+stale_info() {
+	local name=$1 pid pids
+	cat <<-'EOF'
+		zmx cannot reach this session, so it cannot be attached.
+
+		A daemon left running by an older zmx with an incompatible
+		protocol (such as before 1.0) shows up like this. zmx kill
+		cannot stop it either: the old daemon cannot read the
+		request, so the command hangs.
+
+	EOF
+	pid=$(daemon_pid "$name")
+	if [[ -n $pid ]]; then
+		ps -o pid,lstart,command -p "$pid" || true
+		printf '\nSave any work inside it, then press Ctrl-X to stop it\n'
+		printf '(kill %s) and start a new session.\n' "$pid"
+		return 0
+	fi
+	cat <<-'EOF'
+		Its daemon could not be found automatically. It is the zmx
+		process named for the session whose parent (PPID) is 1; the
+		others are attached clients. Save any work inside it, kill
+		that process, then start a new session.
+
+	EOF
+	pids=$(pgrep -d, -f '^([^ ]*/)?zmx (attach|run) ') || return 0
+	ps -o pid,ppid,lstart,command -p "$pids" || true
+}
+
+# Names of all listed sessions, including ones zmx cannot reach,
+# which zmx list --short leaves out.
+session_names() {
+	ZMX_SESSION_PREFIX='' zmx list 2>/dev/null |
+		awk -F'\t' '{ sub(/.*name=/, "", $1); print $1 }'
+}
+
 # Kill the sessions among the candidate lines on stdin, then wait
 # for zmx to drop them so a reload that follows sees the new list.
 kill_sessions() {
-	local type name
+	local type name pid
 	local names=()
 	local patterns=()
-	local current=''
+	local current='' current_pid=''
 
 	# Killing the session zp runs inside takes down zp and its zmx
-	# client mid-command, so order that one last.
+	# client mid-command, so order that one last, whether it is a
+	# normal session or a stale one.
 	while IFS=$'\t' read -r type name _; do
+		if [[ $type == stale ]]; then
+			# zmx kill would hang on these, so signal the daemon
+			# directly; it shuts down and removes its socket.
+			pid=$(daemon_pid "$name")
+			[[ -n $pid ]] || continue
+			patterns+=(-e "$name")
+			if [[ $name == "${ZMX_SESSION:-}" ]]; then
+				current_pid=$pid
+			else
+				kill "$pid" 2>/dev/null || true
+			fi
+			continue
+		fi
 		[[ $type == session ]] || continue
 		if [[ $name == "${ZMX_SESSION:-}" ]]; then
 			current=$name
@@ -241,15 +346,19 @@ kill_sessions() {
 		patterns+=(-e "$current")
 	fi
 
-	[[ ${#names[@]} -gt 0 ]] || return 0
+	[[ ${#patterns[@]} -gt 0 ]] || return 0
 
 	# Listed names are already complete, so keep zmx from applying
 	# $ZMX_SESSION_PREFIX to them again.
-	ZMX_SESSION_PREFIX='' zmx kill "${names[@]}" 2>/dev/null || true
+	if [[ ${#names[@]} -gt 0 ]]; then
+		ZMX_SESSION_PREFIX='' zmx kill "${names[@]}" 2>/dev/null || true
+	fi
+	if [[ -n $current_pid ]]; then
+		kill "$current_pid" 2>/dev/null || true
+	fi
 
 	for _ in 1 2 3 4 5 6 7 8 9 10; do
-		ZMX_SESSION_PREFIX='' zmx list --short 2>/dev/null |
-			grep -Fxq "${patterns[@]}" || return 0
+		session_names | grep -Fxq "${patterns[@]}" || return 0
 		sleep 0.1
 	done
 }
@@ -265,7 +374,8 @@ next_session() {
 	# Sessions this creates get $ZMX_SESSION_PREFIX applied by zmx,
 	# so ignore that prefix when counting existing numbers.
 	next=$(
-		ZMX_SESSION_PREFIX='' zmx list --short 2>/dev/null |
+		# Sessions zmx cannot reach still hold their names.
+		session_names |
 			awk -v prefix="${base}." -v zprefix="${ZMX_SESSION_PREFIX:-}" '
 				zprefix != "" && index($0, zprefix) == 1 {
 					$0 = substr($0, length(zprefix) + 1)
@@ -311,6 +421,8 @@ select_session() {
 			else
 				ZMX_SESSION_PREFIX= zmx history {2} | tail -n 200
 			fi
+		elif test {1} = stale; then
+			"$ZP_SELF" --stale-info {2}
 		elif test -e {2}/.jj && command -v jj >/dev/null; then
 			jj -R {2} --ignore-working-copy --color always log -r :: --limit 50 \
 				-T "$ZP_JJ_LOG_TEMPLATE"
@@ -390,6 +502,11 @@ select_session() {
 			ZMX_SESSION_PREFIX='' attach "$value"
 			;;
 
+		stale)
+			printf 'zmx cannot reach session %s; if an older zmx started it, stop it with Ctrl-X (see the preview) and start a new session\n' "$value" >&2
+			return 1
+			;;
+
 		repo)
 			(
 				cd "$value"
@@ -421,6 +538,11 @@ case ${1:-} in
 	# Internal: re-emit the list for fzf reload bindings.
 	mode='candidates'
 	shift
+	;;
+--stale-info)
+	# Internal: preview text for a session zmx cannot reach.
+	stale_info "$2"
+	exit 0
 	;;
 --kill)
 	# Internal: kill sessions for the fzf ctrl-x binding.
@@ -486,8 +608,9 @@ if [[ $mode == kill ]]; then
 fi
 
 # Note: no early-exit grep here; with pipefail it would turn the
-# producer's SIGPIPE into a false "no sessions".
-if [[ ${#search_roots[@]} -eq 0 && -z $(zmx list --short 2>/dev/null) ]]; then
+# producer's SIGPIPE into a false "no sessions". Plain list so that
+# sessions zmx cannot reach still open the picker and explain.
+if [[ ${#search_roots[@]} -eq 0 && -z $(zmx list 2>/dev/null) ]]; then
 	printf 'no zmx sessions running; start one with `zmx attach <name>`,\n' >&2
 	printf 'or pass repo roots (arguments or $ZP_ROOT) to pick from\n' >&2
 	exit 1

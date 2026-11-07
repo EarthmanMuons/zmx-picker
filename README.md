@@ -97,6 +97,13 @@ Session paths show the working directory zmx reports, shortened to `~`. A
 session whose shell is on another host, such as inside SSH, shows its
 `file://<host>/...` URL instead.
 
+Sessions that zmx lists as unreachable, such as daemons left running by a zmx
+version with an incompatible protocol, are shown with the reason and can't be
+attached or stopped with `zmx kill`, which hangs on an old daemon. Their preview
+shows the daemon process, found with `lsof` when installed, and `Ctrl-X` stops
+it by signaling that process directly. Save any work inside first, then start a
+new session.
+
 ### Selecting without attaching
 
 Use `zp --print [root ...]` to select a session for another command, such as an

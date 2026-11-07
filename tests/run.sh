@@ -151,7 +151,7 @@ assert_log 'sessions zp creates do get ZMX_SESSION_PREFIX applied' \
 	'ATTACH:\[d.zzz-pfx] PWD:*'
 
 next=$(ZMX_SESSION_PREFIX=d. /bin/bash -c '
-	eval "$(awk "/^next_session\(\) \{/,/^\}/" "$1")"
+	eval "$(awk "/^(session_names|next_session)\(\) \{/,/^\}/" "$1")"
 	next_session /x/omega' _ "$zp")
 if [[ $next == omega.10 ]]; then
 	ok 'numbering skips past prefixed sessions when creating'
@@ -240,6 +240,137 @@ if [[ $out == kept ]]; then
 else
 	not_ok 'local_path preserves the caller nocasematch setting' "$out"
 fi
+
+out=$("$zp" --candidates)
+stale_line=$(grep $'^stale\told.3\t' <<<"$out")
+if [[ $stale_line == *'unreachable (err=Unexpected)'* &&
+	$out != *$'session\told.3'* ]]; then
+	ok 'unreachable sessions are listed as stale with the reason'
+else
+	not_ok 'unreachable sessions are listed as stale with the reason' "$out"
+fi
+
+reset_log
+rc=0
+run '' 'old.3' "$enter" >/dev/null || rc=$?
+if [[ $rc -eq 1 && -z $(log) ]]; then
+	ok 'selecting a stale session explains instead of attaching'
+else
+	not_ok 'selecting a stale session explains instead of attaching' \
+		"rc=$rc log=$(log)"
+fi
+
+next=$(/bin/bash -c '
+	eval "$(awk "/^(session_names|next_session)\(\) \{/,/^\}/" "$1")"
+	next_session /x/old' _ "$zp")
+if [[ $next == old.4 ]]; then
+	ok 'numbering counts unreachable sessions as taken'
+else
+	not_ok 'numbering counts unreachable sessions as taken' "$next"
+fi
+
+# daemon_pid with stub zmx and lsof, run under the script's own
+# strict mode. The stubs print a socket for "project branch" ahead
+# of the one for "project", in the Linux form with a type suffix.
+daemon_pid_with() {
+	/bin/bash -c '
+		set -euo pipefail
+		eval "$(awk "/^daemon_pid\(\) \{/,/^\}/" "$1")"
+		zmx() { printf "zmx\t\t1.0.1\nsocket_dir\t/s\n"; }
+		stub=$2
+		lsof() { eval "$stub"; }
+		daemon_pid "$3"
+		echo "rc=$?"' _ "$zp" "$1" "$2"
+}
+
+out=$(daemon_pid_with '
+	printf "p111\nn/s/project branch type=STREAM\n"
+	printf "p222\nn/s/project type=STREAM (LISTEN)\n"' project)
+if [[ $out == $'222\nrc=0' ]]; then
+	ok 'daemon lookup matches the exact socket, not a name prefix'
+else
+	not_ok 'daemon lookup matches the exact socket, not a name prefix' "$out"
+fi
+
+out=$(daemon_pid_with 'printf "p111\nn/s/project branch\n"' project)
+if [[ $out == rc=0 ]]; then
+	ok 'daemon lookup finds nothing when only a longer name matches'
+else
+	not_ok 'daemon lookup finds nothing when only a longer name matches' "$out"
+fi
+
+out=$(daemon_pid_with 'return 1' project)
+if [[ $out == rc=0 ]]; then
+	ok 'a failing lsof means no daemon found, not an aborted script'
+else
+	not_ok 'a failing lsof means no daemon found, not an aborted script' "$out"
+fi
+
+out=$(daemon_pid_with '
+	printf "p333\nn/s/project\n"
+	seq 1 200000 | sed "s/^/n\/x\//"' project)
+if [[ $out == $'333\nrc=0' ]]; then
+	ok 'large lsof output after a match does not die of SIGPIPE'
+else
+	not_ok 'large lsof output after a match does not die of SIGPIPE' "$out"
+fi
+
+# Without a stand-in daemon pid, the fake lsof finds nothing and
+# exits 1, like a real lsof with no match.
+out=$("$zp" --stale-info old.3)
+if [[ $out == *'could not be found automatically'* ]]; then
+	ok 'the stale preview falls back to manual guidance without a pid'
+else
+	not_ok 'the stale preview falls back to manual guidance without a pid' "$out"
+fi
+
+reset_log
+printf 'stale\told.3\tx\nsession\tbeta\tx\n' | "$zp" --kill
+assert_log 'a failed daemon lookup still kills the other marked sessions' \
+	'KILL:\[beta] PWD:*'
+
+# Start a stand-in for an old daemon and record its pid where the
+# fake lsof finds it. It logs SIGTERM to the call log, so tests can
+# check when it was signaled relative to zmx kill. The subshell
+# reparents it away from this shell, so once killed it is reaped
+# instead of lingering as a zombie.
+start_stale_daemon() {
+	(
+		sh -c 'trap "echo STALE:TERM >>\"\$1\"; exit 0" TERM
+			while :; do sleep 1 & wait; done' _ "$ZP_TEST_DIR/calls.log" \
+			>/dev/null 2>&1 &
+		echo $! >"$ZP_TEST_DIR/stale.pid"
+	)
+	stale_pid=$(cat "$ZP_TEST_DIR/stale.pid")
+}
+
+start_stale_daemon
+
+out=$("$zp" --stale-info old.3)
+if [[ $out == *"kill $stale_pid"* ]]; then
+	ok 'the stale preview names the daemon pid found via lsof'
+else
+	not_ok 'the stale preview names the daemon pid found via lsof' "$out"
+fi
+
+reset_log
+printf 'stale\told.3\tx\n' | "$zp" --kill
+if ! kill -0 "$stale_pid" 2>/dev/null && [[ $(log) == STALE:TERM ]]; then
+	ok '--kill signals a stale daemon directly instead of zmx kill'
+else
+	kill "$stale_pid" 2>/dev/null || true
+	not_ok '--kill signals a stale daemon directly instead of zmx kill' \
+		"log=$(log)"
+fi
+
+reset_log
+start_stale_daemon
+printf 'stale\told.3\tx\nsession\tbeta\tx\n' |
+	ZMX_SESSION=old.3 "$zp" --kill
+assert_log '--kill signals the current stale session after the others' \
+	$'KILL:\\[beta] PWD:*\nSTALE:TERM'
+kill "$stale_pid" 2>/dev/null || true
+rm -f "$ZP_TEST_DIR/stale.pid"
 
 out=$("$zp" --version)
 if [[ $out == zp\ [0-9]*.[0-9]*.[0-9]* && $out == "$("$zp" -V)" ]]; then
