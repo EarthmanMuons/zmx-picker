@@ -21,11 +21,14 @@ sessions() {
 	printf '  name=alpha.2\tpid=12\tclients=0\tcreated=2\tcwd=/tmp\n'
 	# beta carries labels (trailing tab-separated key=value fields)
 	# and lives in a repo, so it also guards against those fields
-	# leaking into cwd and breaking the repo-association count.
-	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tcwd=%s\tproject=zp\tenv=work\n' \
-		"$ZP_TEST_DIR/root/plain"
-	printf '  name=d.gamma\tpid=14\tclients=0\tcreated=4\tcwd=/tmp\n'
-	printf '  name=d.omega.9\tpid=15\tclients=0\tcreated=5\tcwd=/tmp\n'
+	# leaking into cwd and breaking the repo-association count. Its
+	# cwd is the OSC 7 URL zmx >= 1.0 reports for this host.
+	printf '  name=beta\tpid=13\tclients=0\tcreated=3\tcwd=file://%s%s\tproject=zp\tenv=work\n' \
+		"$(hostname)" "$ZP_TEST_DIR/root/plain"
+	# gamma sits on another host, as inside SSH; omega's cwd is
+	# percent-encoded with no host, which means this machine.
+	printf '  name=d.gamma\tpid=14\tclients=0\tcreated=4\tcwd=file://elsewhere.example/tmp\n'
+	printf '  name=d.omega.9\tpid=15\tclients=0\tcreated=5\tcwd=file:///tmp/a%%20b\n'
 }
 
 alive() {

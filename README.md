@@ -93,6 +93,10 @@ Any [zmx] session labels (`zmx set <name> key=value`) are shown alongside each
 session and are fuzzy-searchable, so typing `key=value` narrows the picker to
 the sessions that carry that label.
 
+Session paths show the working directory zmx reports, shortened to `~`. A
+session whose shell is on another host, such as inside SSH, shows its
+`file://<host>/...` URL instead.
+
 ### Selecting without attaching
 
 Use `zp --print [root ...]` to select a session for another command, such as an

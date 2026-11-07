@@ -207,6 +207,40 @@ else
 	not_ok 'display paths shorten the home dir to ~ while values stay absolute' "$line"
 fi
 
+out=$(HOME=/tmp "$zp" --candidates)
+gamma_line=$(grep $'^session\td.gamma\t' <<<"$out")
+omega_line=$(grep $'^session\td.omega.9\t' <<<"$out")
+if [[ $gamma_line == *'file://elsewhere.example/tmp' &&
+	$omega_line == *'  ~/a b' ]]; then
+	ok 'local OSC 7 cwds show as decoded ~ paths, remote ones keep the URL'
+else
+	not_ok 'local OSC 7 cwds show as decoded ~ paths, remote ones keep the URL' \
+		"$gamma_line | $omega_line"
+fi
+
+out=$(/bin/bash -c '
+	eval "$(awk "/^(local_path|tilde)\(\) \{/,/^\}/" "$1")"
+	local_path "file:///tmp/a%0Ab%09c"
+	tilde "$localized"
+	printf "%s|%s" "$localized" "$tilded"' _ "$zp")
+if [[ $out == $'/tmp/a\nb\tc|/tmp/a?b?c' ]]; then
+	ok 'decoded cwds keep control characters but display them as ?'
+else
+	not_ok 'decoded cwds keep control characters but display them as ?' "$out"
+fi
+
+out=$(/bin/bash -c '
+	eval "$(awk "/^local_path\(\) \{/,/^\}/" "$1")"
+	shopt -s nocasematch
+	local_path "file://elsewhere.example/tmp"
+	local_path "file:///tmp"
+	shopt -q nocasematch && echo kept' _ "$zp")
+if [[ $out == kept ]]; then
+	ok 'local_path preserves the caller nocasematch setting'
+else
+	not_ok 'local_path preserves the caller nocasematch setting' "$out"
+fi
+
 out=$("$zp" --version)
 if [[ $out == zp\ [0-9]*.[0-9]*.[0-9]* && $out == "$("$zp" -V)" ]]; then
 	ok '--version and -V report the version'
