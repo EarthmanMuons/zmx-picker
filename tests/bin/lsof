@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Fake lsof for the test suite. Reports the stale session's stand-in
+# daemon, whose pid is in $ZP_TEST_DIR/stale.pid, as holding its
+# socket, in the -F form Linux uses (path, a space, the type). A
+# client entry with no path rides along, as on a real system.
+
+set -eu
+
+pidfile="${ZP_TEST_DIR:?}/stale.pid"
+[ -e "$pidfile" ] || exit 1
+printf 'p%s\nn%s/old.3 type=STREAM\n' "$(cat "$pidfile")" "$ZP_TEST_DIR/sock"
+printf 'p1\nntype=STREAM\n'
