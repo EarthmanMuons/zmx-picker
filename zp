@@ -48,12 +48,55 @@ export ZP_JJ_LOG_TEMPLATE='
 export ZP_GIT_LOG_FORMAT='%C(auto)%h %as%d %s'
 
 # Shorten a leading $HOME to ~ for display; result lands in $tilded.
+# Control characters, which a decoded cwd can carry, would split the
+# candidate row or its tab-delimited fields, so show them as ?.
 # A function returning via stdout would cost a subshell per row.
 tilded=''
 tilde() {
 	tilded=$1
 	if [[ $tilded == "$HOME" || $tilded == "$HOME"/* ]]; then
 		tilded="~${tilded#"$HOME"}"
+	fi
+	tilded=${tilded//[[:cntrl:]]/?}
+}
+
+# Turn a local OSC 7 cwd (file://<host><percent-encoded path>, which
+# zmx >= 1.0 reports) into a plain path, so it matches repo paths
+# and can be shortened to ~. A cwd on another host, e.g. a session
+# inside SSH, keeps its URL so the host stays visible. Plain paths
+# pass through. Result lands in $localized.
+localized=''
+local_path() {
+	local value=$1 rest host local=1 nocase=0
+	localized=$value
+
+	case $value in
+	file://* | kitty-shell-cwd://*) ;;
+	*) return 0 ;;
+	esac
+
+	rest=${value#*://}
+	host=${rest%%/*}
+	[[ $rest == */* ]] || return 0
+
+	# Same rule as zmx: no host, localhost, or this host by full
+	# name or first label (gethostname and OSC 7 may disagree on
+	# FQDN versus short name), ignoring case. Restore the caller's
+	# nocasematch afterward.
+	shopt -q nocasematch && nocase=1
+	shopt -s nocasematch
+	if [[ -n $host && $host != localhost && $host != "$HOSTNAME" &&
+		${host%%.*} != "${HOSTNAME%%.*}" ]]; then
+		local=0
+	fi
+	[[ $nocase -eq 1 ]] || shopt -u nocasematch
+	[[ $local -eq 1 ]] || return 0
+
+	localized=/${rest#*/}
+	# zmx escapes \ along with other unsafe bytes, so after
+	# turning each %XX into \xXX, %b decodes only those.
+	if [[ $localized == *%* ]]; then
+		printf -v localized '%b' "${localized//\%/\\x}"
 	fi
 }
 
@@ -77,11 +120,12 @@ candidates() {
 		# the path column and repo session counts keep working.
 		dir=${dir#*cwd=}
 		dir=${dir#*start_dir=}
+		local_path "$dir"
+		dir=$localized
 		# Any session labels arrive as extra tab-separated key=value
 		# fields after the directory; slurping them into their own
 		# field keeps a stray tab out of $dir, which would corrupt
 		# the path and the cwd match behind repo session counts. Join
-		# them with spaces for display; absent labels leave it empty.
 		# them with spaces for display; absent labels leave it empty.
 		labels=${labels//$'\t'/ }
 
