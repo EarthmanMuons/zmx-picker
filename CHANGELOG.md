@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
 ### Added
 
 - Sessions that zmx cannot reach, such as daemons left running by a zmx older
@@ -87,7 +89,8 @@ and this project adheres to
 - `$ZMX_SESSION_PREFIX` support, `~` path shortening, and an optional fd
   dependency with a find fallback
 
-[unreleased]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.2.1...v0.2.2
