@@ -245,7 +245,11 @@ candidates() {
 # prefix match would let "project" match "project branch". Prints
 # nothing, successfully, when zmx or lsof fails or nothing matches.
 daemon_pid() {
-	local name=$1 dir out
+	local name=$1 dir
+	# +x: a caller that exports $out, as nix builders and devshells
+	# do, would otherwise export this local too, and a large capture
+	# in awk's environment fails exec with E2BIG.
+	local +x out
 	command -v lsof >/dev/null || return 0
 	dir=$(zmx version 2>/dev/null) || return 0
 	dir=$(awk -F'\t+' '$1 == "socket_dir" { print $2 }' <<<"$dir")
