@@ -62,6 +62,37 @@ tilde() {
 	tilded=${tilded//[[:cntrl:]]/?}
 }
 
+# Parse $ZP_LABEL_MARKS into the caller's mark_labels and
+# mark_glyphs arrays, once rather than per session. The map is
+# space-separated key=value=mark entries, split at the last =; an
+# entry with no mark is ignored.
+label_marks_parse() {
+	local label glyph i
+	local entries=()
+	read -r -a entries <<<"${ZP_LABEL_MARKS:-}"
+	# An index loop, as Bash 3.2 under set -u rejects "${entries[@]}"
+	# on an empty array.
+	for ((i = 0; i < ${#entries[@]}; i++)); do
+		label=${entries[i]%=*}
+		glyph=${entries[i]##*=}
+		[[ $label == *=* && -n $glyph ]] || continue
+		mark_labels+=("$label")
+		mark_glyphs+=("$glyph")
+	done
+}
+
+# Set $marked to the marks a session's labels ($1, key=value fields
+# joined by spaces) carry, in the map's order.
+label_marks() {
+	local i
+	marked=''
+	for ((i = 0; i < ${#mark_labels[@]}; i++)); do
+		if [[ " $1 " == *" ${mark_labels[i]} "* ]]; then
+			marked+=${mark_glyphs[i]}
+		fi
+	done
+}
+
 # Turn a local OSC 7 cwd (file://<host><percent-encoded path>, which
 # zmx >= 1.0 reports) into a plain path, so it matches repo paths
 # and can be shortened to ~. A cwd on another host, e.g. a session
@@ -104,9 +135,14 @@ local_path() {
 
 candidates() {
 	local name clients dir labels repo count note labelcol sdir width i
+	local marked marktab=''
+	local mark_labels=() mark_glyphs=()
 	local session_dirs=()
 	local names=() notes=() session_clients=() session_labels=()
+	local session_marks=()
 	local stale_names=() stale_reasons=()
+
+	label_marks_parse
 
 	# Existing zmx sessions. Lines carry a marker prefix before
 	# name= (e.g. "→ " on the attached session), so strip through
@@ -161,6 +197,16 @@ candidates() {
 		notes+=("$note")
 		session_clients+=("$clients")
 		session_labels+=("$labels")
+		label_marks "$labels"
+		session_marks+=("$marked")
+		# A tab after the marks lets fzf align the names at its next
+		# tab stop, measuring the marks as it renders them. With the
+		# tab stop pinned at 8, that leaves six columns for marks
+		# after the arrow. Rows are unchanged unless a session has a
+		# mark.
+		if [[ -n $marked ]]; then
+			marktab=$'\t'
+		fi
 		if [[ ${#name} -gt $width ]]; then
 			width=${#name}
 		fi
@@ -174,13 +220,14 @@ candidates() {
 		if [[ -n ${session_labels[i]} ]]; then
 			labelcol="  ${session_labels[i]}"
 		fi
-		printf 'session\t%s\t%s%-*s  clients:%-2s  %s%s\n' \
-			"${names[i]}" "${notes[i]}" "$width" "${names[i]}" \
+		printf 'session\t%s\t%s%s%s%-*s  clients:%-2s  %s%s\n' \
+			"${names[i]}" "${notes[i]}" "${session_marks[i]}" "$marktab" \
+			"$width" "${names[i]}" \
 			"${session_clients[i]}" "$tilded" "$labelcol"
 	done
 	for ((i = 0; i < ${#stale_names[@]}; i++)); do
-		printf 'stale\t%s\t  %-*s  %s\n' \
-			"${stale_names[i]}" "$width" "${stale_names[i]}" \
+		printf 'stale\t%s\t  %s%-*s  %s\n' \
+			"${stale_names[i]}" "$marktab" "$width" "${stale_names[i]}" \
 			"${stale_reasons[i]}"
 	done
 
@@ -454,6 +501,7 @@ select_session() {
 			fzf \
 				--delimiter=$'\t' \
 				--with-nth=3.. \
+				--tabstop=8 \
 				--print-query \
 				--expect=ctrl-n \
 				--with-shell='sh -c' \
