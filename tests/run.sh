@@ -10,7 +10,7 @@ trap 'rm -rf "$ZP_TEST_DIR"' EXIT
 
 PATH=$here/bin:$PATH
 export PATH
-unset ZP_ROOT
+unset ZP_ROOT ZP_LABEL_MARKS
 
 root=$ZP_TEST_DIR/root
 mkdir -p "$root/plain/.jj" "$root/my.repo/.git"
@@ -138,6 +138,51 @@ if [[ $beta_line == *'project=zp env=work'* ]]; then
 else
 	not_ok 'session labels are surfaced in the searchable display column' \
 		"$beta_line"
+fi
+
+# ZP_LABEL_MARKS maps key=value labels to marks shown ahead of the
+# name, in the map's order, then a tab: fzf expands it to the next
+# tab stop, so names align however wide fzf measures the marks. The
+# labels themselves stay, so they are still searchable; an entry
+# with no mark is ignored.
+out=$(ZMX_SESSION=alpha.1 ZP_LABEL_MARKS='env=work=W nomark project=zp=Z' "$zp" --candidates "$root")
+display() { grep $'^session\t'"$1"$'\t' <<<"$out" | cut -f3-; }
+if [[ $(display beta) == "  WZ${tab}beta  "*'project=zp env=work' ]]; then
+	ok 'label marks show ahead of the name, labels kept'
+else
+	not_ok 'label marks show ahead of the name, labels kept' "$(display beta)"
+fi
+if [[ $(display alpha.2) == "  ${tab}alpha.2 "* ]]; then
+	ok 'unmarked sessions get the tab so names stay aligned'
+else
+	not_ok 'unmarked sessions get the tab so names stay aligned' \
+		"$(display alpha.2)"
+fi
+if [[ $(display alpha.1) == "→ ${tab}alpha.1 "* ]]; then
+	ok 'label marks follow the current-session arrow'
+else
+	not_ok 'label marks follow the current-session arrow' "$(display alpha.1)"
+fi
+stale_display=$(grep $'^stale\told.3\t' <<<"$out" | cut -f3-)
+if [[ $stale_display == "  ${tab}old.3 "* ]]; then
+	ok 'stale sessions get the tab too'
+else
+	not_ok 'stale sessions get the tab too' "$stale_display"
+fi
+
+# Unset, or matching nothing, the rows keep their old shape.
+out=$("$zp" --candidates "$root")
+unmarked=$out
+if [[ $(display alpha.2) == '  alpha.2 '* ]]; then
+	ok 'no mark column when ZP_LABEL_MARKS is unset'
+else
+	not_ok 'no mark column when ZP_LABEL_MARKS is unset' "$(display alpha.2)"
+fi
+out=$(ZP_LABEL_MARKS='env=none=X' "$zp" --candidates "$root")
+if [[ $out == "$unmarked" ]]; then
+	ok 'a map matching no session leaves the rows unchanged'
+else
+	not_ok 'a map matching no session leaves the rows unchanged' "$out"
 fi
 
 reset_log

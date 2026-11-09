@@ -93,6 +93,16 @@ Any [zmx] session labels (`zmx set <name> key=value`) are shown alongside each
 session and are fuzzy-searchable, so typing `key=value` narrows the picker to
 the sessions that carry that label.
 
+To mark sessions by label, set `ZP_LABEL_MARKS` to space-separated
+`key=value=mark` entries. Each label a session carries puts its mark in a column
+ahead of the name, in the order the entries are listed, and the labels
+themselves still show and match. The mark column is six terminal columns wide:
+room for six narrow marks, or three emoji:
+
+```sh
+export ZP_LABEL_MARKS='state=working=◐ state=blocked=🔔 state=failed=❌'
+```
+
 Session paths show the working directory zmx reports, shortened to `~`. A
 session whose shell is on another host, such as inside SSH, shows its
 `file://<host>/...` URL instead.

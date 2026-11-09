@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `ZP_LABEL_MARKS` maps `key=value` session labels to marks, such as an icon for
+  a `state` label, shown in a column ahead of the session name
+
 ### Fixed
 
 - Looking up the daemon behind an unreachable session no longer fails when the
