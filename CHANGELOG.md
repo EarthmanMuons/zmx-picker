@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Looking up the daemon behind an unreachable session no longer fails when the
+  caller exports `out`, as Nix builders and devshells do: the `lsof` capture
+  was exported with it, and a large one failed `awk` with "Argument list too
+  long"
+
 ## [0.5.0] - 2026-11-07
 
 ### Added

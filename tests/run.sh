@@ -315,6 +315,18 @@ else
 	not_ok 'large lsof output after a match does not die of SIGPIPE' "$out"
 fi
 
+# Nix builders and devshells export $out. A local of the same name
+# would inherit the export and carry the whole capture into awk's
+# environment, past the kernel's per-string limit.
+out=$(export out=x && daemon_pid_with '
+	printf "p333\nn/s/project\n"
+	seq 1 200000 | sed "s/^/n\/x\//"' project)
+if [[ $out == $'333\nrc=0' ]]; then
+	ok 'large lsof output survives a caller that exports out'
+else
+	not_ok 'large lsof output survives a caller that exports out' "$out"
+fi
+
 # Without a stand-in daemon pid, the fake lsof finds nothing and
 # exits 1, like a real lsof with no match.
 out=$("$zp" --stale-info old.3)
