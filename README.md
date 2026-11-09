@@ -96,8 +96,8 @@ the sessions that carry that label.
 To mark sessions by label, set `ZP_LABEL_MARKS` to space-separated
 `key=value=mark` entries. Each label a session carries puts its mark in a column
 ahead of the name, in the order the entries are listed, and the labels
-themselves still show and match. The mark column is six terminal columns wide:
-room for six narrow marks, or three emoji:
+themselves still show and match. The column is sized to fit the widest marks a
+session could carry, one value per label key:
 
 ```sh
 export ZP_LABEL_MARKS='state=working=◐ state=blocked=🔔 state=failed=❌'

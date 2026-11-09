@@ -170,6 +170,23 @@ else
 	not_ok 'stale sessions get the tab too' "$stale_display"
 fi
 
+# The mark column ends at fzf's first tab stop, sized from the map:
+# a session carries one value per key, so the widest mark under each
+# key, summed, at two columns a character, after the arrow, plus a
+# gap. ASCII marks keep the count independent of the locale.
+tabstop() {
+	ZP_LABEL_MARKS=$1 bash -c '
+		eval "$(awk "/^(label_marks_parse|mark_tabstop)\(\) \{/,/^\}/" "$1")"
+		mark_tabstop
+		echo "$tabstop"' _ "$zp"
+}
+stops="$(tabstop 'state=a=W state=b=XY env=work=Z') $(tabstop '')"
+if [[ $stops == '9 8' ]]; then
+	ok 'the tab stop fits the widest marks a session can carry'
+else
+	not_ok 'the tab stop fits the widest marks a session can carry' "$stops"
+fi
+
 # Unset, or matching nothing, the rows keep their old shape.
 out=$("$zp" --candidates "$root")
 unmarked=$out
