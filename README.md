@@ -103,6 +103,9 @@ session could carry, one value per label key:
 export ZP_LABEL_MARKS='state=working=◐ state=blocked=🔔 state=failed=❌'
 ```
 
+A later entry for the same label replaces an earlier one, so you can append to a
+map set elsewhere: `ZP_LABEL_MARKS="$ZP_LABEL_MARKS state=failed=⊘"`.
+
 Session paths show the working directory zmx reports, shortened to `~`. A
 session whose shell is on another host, such as inside SSH, shows its
 `file://<host>/...` URL instead.

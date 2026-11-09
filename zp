@@ -62,22 +62,37 @@ tilde() {
 	tilded=${tilded//[[:cntrl:]]/?}
 }
 
+# Set $slot to the index of $1 among the remaining arguments, or
+# their count when it is absent: where to store it in their array.
+# Callers pass ${arr[@]+"${arr[@]}"}, as Bash 3.2 under set -u
+# rejects "${arr[@]}" on an empty array.
+slot_of() {
+	local needle=$1
+	shift
+	slot=0
+	while [[ $# -gt 0 && $1 != "$needle" ]]; do
+		shift
+		slot=$((slot + 1))
+	done
+}
+
 # Parse $ZP_LABEL_MARKS into the caller's mark_labels and
 # mark_glyphs arrays, once rather than per session. The map is
 # space-separated key=value=mark entries, split at the last =; an
-# entry with no mark is ignored.
+# entry with no mark is ignored, and a later mark for a label
+# replaces an earlier one.
 label_marks_parse() {
-	local label glyph i
+	local label glyph i slot
 	local entries=()
 	read -r -a entries <<<"${ZP_LABEL_MARKS:-}"
-	# An index loop, as Bash 3.2 under set -u rejects "${entries[@]}"
-	# on an empty array.
+	# An index loop, for the same Bash 3.2 reason as slot_of's callers.
 	for ((i = 0; i < ${#entries[@]}; i++)); do
 		label=${entries[i]%=*}
 		glyph=${entries[i]##*=}
 		[[ $label == *=* && -n $glyph ]] || continue
-		mark_labels+=("$label")
-		mark_glyphs+=("$glyph")
+		slot_of "$label" ${mark_labels[@]+"${mark_labels[@]}"}
+		mark_labels[slot]=$label
+		mark_glyphs[slot]=$glyph
 	done
 }
 
@@ -100,20 +115,18 @@ label_marks() {
 # the first stop. After the two-column arrow and a gap; 8, fzf's
 # default, when the map has no marks.
 mark_tabstop() {
-	local mark_labels=() mark_glyphs=() keys=() widest=() key i j sum=0
+	local mark_labels=() mark_glyphs=() keys=() widest=() key i slot sum=0
 	label_marks_parse
 	for ((i = 0; i < ${#mark_labels[@]}; i++)); do
 		key=${mark_labels[i]%%=*}
-		for ((j = 0; j < ${#keys[@]}; j++)); do
-			[[ ${keys[j]} != "$key" ]] || break
-		done
-		keys[j]=$key
-		if [[ ${#mark_glyphs[i]} -gt ${widest[j]:-0} ]]; then
-			widest[j]=${#mark_glyphs[i]}
+		slot_of "$key" ${keys[@]+"${keys[@]}"}
+		keys[slot]=$key
+		if [[ ${#mark_glyphs[i]} -gt ${widest[slot]:-0} ]]; then
+			widest[slot]=${#mark_glyphs[i]}
 		fi
 	done
-	for ((j = 0; j < ${#widest[@]}; j++)); do
-		sum=$((sum + widest[j]))
+	for ((i = 0; i < ${#widest[@]}; i++)); do
+		sum=$((sum + widest[i]))
 	done
 	tabstop=8
 	if [[ $sum -gt 0 ]]; then
