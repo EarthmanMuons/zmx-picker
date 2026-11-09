@@ -93,6 +93,34 @@ label_marks() {
 	done
 }
 
+# Set $tabstop to the fzf tab stop that ends the mark column. A
+# session carries one value per label key, so the widest marks it can
+# carry are the widest mark under each key, summed. Counting two
+# columns a character overestimates them, so the names always land on
+# the first stop. After the two-column arrow and a gap; 8, fzf's
+# default, when the map has no marks.
+mark_tabstop() {
+	local mark_labels=() mark_glyphs=() keys=() widest=() key i j sum=0
+	label_marks_parse
+	for ((i = 0; i < ${#mark_labels[@]}; i++)); do
+		key=${mark_labels[i]%%=*}
+		for ((j = 0; j < ${#keys[@]}; j++)); do
+			[[ ${keys[j]} != "$key" ]] || break
+		done
+		keys[j]=$key
+		if [[ ${#mark_glyphs[i]} -gt ${widest[j]:-0} ]]; then
+			widest[j]=${#mark_glyphs[i]}
+		fi
+	done
+	for ((j = 0; j < ${#widest[@]}; j++)); do
+		sum=$((sum + widest[j]))
+	done
+	tabstop=8
+	if [[ $sum -gt 0 ]]; then
+		tabstop=$((2 + 2 * sum + 1))
+	fi
+}
+
 # Turn a local OSC 7 cwd (file://<host><percent-encoded path>, which
 # zmx >= 1.0 reports) into a plain path, so it matches repo paths
 # and can be shortened to ~. A cwd on another host, e.g. a session
@@ -199,11 +227,9 @@ candidates() {
 		session_labels+=("$labels")
 		label_marks "$labels"
 		session_marks+=("$marked")
-		# A tab after the marks lets fzf align the names at its next
-		# tab stop, measuring the marks as it renders them. With the
-		# tab stop pinned at 8, that leaves six columns for marks
-		# after the arrow. Rows are unchanged unless a session has a
-		# mark.
+		# A tab after the marks lets fzf align the names at its first
+		# tab stop (mark_tabstop), measuring the marks as it renders
+		# them. Rows are unchanged unless a session has a mark.
 		if [[ -n $marked ]]; then
 			marktab=$'\t'
 		fi
@@ -459,7 +485,7 @@ attach() {
 select_session() {
 	local output rc query key selected
 	local type value
-	local kill_cmd reload_cmd root
+	local kill_cmd reload_cmd root tabstop
 
 	# Runs under `sh -c` via --with-shell, regardless of the user's
 	# login shell. {1} is the candidate type, {2} its value.
@@ -495,13 +521,14 @@ select_session() {
 		done
 	fi
 
+	mark_tabstop
 	set +e
 	output=$(
 		candidates |
 			fzf \
 				--delimiter=$'\t' \
 				--with-nth=3.. \
-				--tabstop=8 \
+				--tabstop="$tabstop" \
 				--print-query \
 				--expect=ctrl-n \
 				--with-shell='sh -c' \
