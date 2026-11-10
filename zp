@@ -375,15 +375,17 @@ stale_info() {
 	pid=$(daemon_pid "$name")
 	if [[ -n $pid ]]; then
 		ps -o pid,lstart,command -p "$pid" || true
-		printf '\nSave any work inside it, then press Ctrl-X to stop it\n'
-		printf '(kill %s) and start a new session.\n' "$pid"
+		printf '\nCtrl-X stops it (kill %s). This ends anything still\n' "$pid"
+		printf 'running in the session, so if a terminal is still attached\n'
+		printf 'to it, finish up there first.\n'
 		return 0
 	fi
 	cat <<-'EOF'
 		Its daemon could not be found automatically. It is the zmx
 		process named for the session whose parent (PPID) is 1; the
-		others are attached clients. Save any work inside it, kill
-		that process, then start a new session.
+		others are attached clients. Killing it ends anything still
+		running in the session, so if a terminal is still attached
+		to it, finish up there first.
 
 	EOF
 	pids=$(pgrep -d, -f '^([^ ]*/)?zmx (attach|run) ') || return 0
