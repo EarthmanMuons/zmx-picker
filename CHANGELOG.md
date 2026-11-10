@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-09
+
 ### Added
 
 - `ZP_LABEL_MARKS` maps `key=value` session labels to marks, such as an icon for
@@ -100,7 +102,8 @@ and this project adheres to
 - `$ZMX_SESSION_PREFIX` support, `~` path shortening, and an optional fd
   dependency with a find fallback
 
-[unreleased]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/EarthmanMuons/zmx-picker/compare/v0.2.2...v0.3.0
