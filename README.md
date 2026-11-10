@@ -49,100 +49,97 @@ options:
   -V, --version  Print the version
 ```
 
-For example, to always pick from repositories under `~/src`, set:
+### Shell setup
 
-**Bash:**
+To always list repositories under `~/src`, set `ZP_ROOT` with
+`export ZP_ROOT="$HOME/src"` in Bash or zsh, or `set -gx ZP_ROOT $HOME/src` in
+fish.
 
-```sh
-export ZP_ROOT="$HOME/src"
-```
-
-**fish:**
+In fish, you can also open `zp` with `Ctrl-\` by adding this to your
+`config.fish`. The `ZMX_SESSION` check keeps `Ctrl-\` free inside a zmx session,
+where it detaches the current session instead:
 
 ```fish
-set -gx ZP_ROOT $HOME/src
+if not set -q ZMX_SESSION
+    bind ctrl-\\ 'zp; commandline -f execute'
+end
 ```
 
-> [!TIP]
->
-> Bind `zp` to a key for quick access:
->
-> ```fish
-> # bind Ctrl-\ to zp when not inside a zmx session;
-> # inside zmx, Ctrl-\ detaches the current session
-> if not set -q ZMX_SESSION
->     bind ctrl-\\ 'zp; commandline -f execute'
-> end
-> ```
-
-Inside the picker:
+### Picker keys
 
 | Key      | Action                                                                       |
 | -------- | ---------------------------------------------------------------------------- |
 | `Enter`  | Attach the selection, or create a session named after an unmatched query     |
-| `Tab`    | Mark or unmark a session                                                     |
+| `Tab`    | Mark or unmark a session for `Ctrl-X`                                        |
 | `Ctrl-N` | Create a session named after the query, even when a candidate is highlighted |
 | `Ctrl-X` | Kill the marked sessions, or the highlighted one when none are marked        |
 | `Esc`    | Cancel                                                                       |
 
 Sessions created from a repository are named `<repo>.<n>` with the next free
-number and start in the repository's directory; sessions created from a query
+number and start in the repository's directory. Sessions created from a query
 start in the current directory.
-
-Any [zmx] session labels (`zmx set <name> key=value`) are shown alongside each
-session and are fuzzy-searchable, so typing `key=value` narrows the picker to
-the sessions that carry that label.
-
-To mark sessions by label, set `ZP_LABEL_MARKS` to space-separated
-`key=value=mark` entries. Each label a session carries puts its mark in a column
-ahead of the name, in the order the entries are listed, and the labels
-themselves still show and match. The column is sized to fit the widest marks a
-session could carry, one value per label key:
-
-```sh
-export ZP_LABEL_MARKS='state=working=◐ state=blocked=🔔 state=failed=❌'
-```
-
-A later entry for the same label replaces an earlier one, so you can append to a
-map set elsewhere: `ZP_LABEL_MARKS="$ZP_LABEL_MARKS state=failed=⊘"`.
 
 Session paths show the working directory zmx reports, shortened to `~`. A
 session whose shell is on another host, such as inside SSH, shows its
 `file://<host>/...` URL instead.
 
-Sessions that zmx lists as unreachable, such as daemons left running by a zmx
-version with an incompatible protocol, are shown with the reason and can't be
-attached or stopped with `zmx kill`, which hangs on an old daemon. Their preview
-shows the daemon process, found with `lsof` when installed, and `Ctrl-X` stops
-it by signaling that process directly. Save any work inside first, then start a
-new session.
+### Session labels
+
+Labels set with `zmx set <name> key=value` appear at the end of each session's
+row and are fuzzy-searchable, so typing `state=failed` narrows the list to the
+sessions carrying that label.
+
+To also show an icon ahead of the session name, set `ZP_LABEL_MARKS` to
+space-separated `key=value=icon` entries:
+
+```sh
+export ZP_LABEL_MARKS='state=working=◐ state=blocked=🔔 state=failed=❌'
+```
+
+After `zmx set api.1 state=working`, that session's row looks like this:
+
+```
+  ◐  api.1  clients:1   ~/src/api  state=working
+```
+
+A session with several matching labels shows each icon, in the order the entries
+are listed. A later entry for the same label replaces an earlier one, so you can
+override a map set elsewhere: `ZP_LABEL_MARKS="$ZP_LABEL_MARKS state=failed=⊘"`.
+
+### Unreachable sessions
+
+zmx can't reach some sessions, such as daemons left running by a zmx version
+with an incompatible protocol. `zp` lists these with the reason, but they can't
+be attached.
+
+With `lsof` installed, the preview shows the daemon process and `Ctrl-X` stops
+it. This ends anything still running in the session, so if a terminal is still
+attached to it, finish up there first.
 
 ### Selecting without attaching
 
-Use `zp --print [root ...]` to select a session for another command, such as an
-autossh wrapper that reconnects to the same selection. Selecting an entry prints
-two NUL-terminated fields to stdout, with no trailing newline:
+`zp --print [root ...]` passes the selection to another command, such as an
+autossh wrapper that reconnects to the same session. It doesn't create or attach
+a session. Instead, it writes two NUL-terminated fields to stdout, with no
+trailing newline:
 
-1. The directory from which to attach: the repository directory when selecting a
-   repository, or the directory where `zp` was launched when selecting an
-   existing session or typing a name. This is not the selected session's
-   original starting directory or its live `cwd` reported by zmx.
-2. The complete session name, including `ZMX_SESSION_PREFIX` when set. Clear
-   that variable when attaching so zmx does not apply the prefix again.
+1. The directory to attach from: the repository's directory for a repository,
+   otherwise the directory where `zp` was launched. For an existing session,
+   this is not its starting directory or live working directory.
+2. The complete session name, including any `ZMX_SESSION_PREFIX`. Clear that
+   variable when attaching so zmx doesn't apply the prefix again.
 
-Selection does not create or attach a session. Esc or Ctrl-C cancels with exit
-status 0 and no output. The picker still supports Ctrl-X to kill sessions.
+Esc or Ctrl-C prints nothing and exits with status 0. `Ctrl-X` still kills
+sessions.
 
-In Bash, read the fields directly; command substitution (`$(zp --print)`) cannot
-preserve NUL bytes. For example, to attach to the selection:
+Command substitution can't preserve NUL bytes, so in Bash, read the fields
+directly. The reads fail on cancellation, which skips the attach:
 
 ```bash
 if { IFS= read -r -d '' start_dir && IFS= read -r -d '' session_name; } < <(zp --print); then
     (cd "$start_dir" && ZMX_SESSION_PREFIX= zmx attach "$session_name")
 fi
 ```
-
-The reads fail on cancellation, so the example does not attach in that case.
 
 ## License
 
