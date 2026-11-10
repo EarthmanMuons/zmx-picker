@@ -39,14 +39,19 @@ Copy the `zp` script somewhere on your `PATH`.
 ```
 usage: zp [--print] [root ...]
 
-zmx-picker - lists zmx sessions, plus repos under any roots
-given as arguments or $ZP_ROOT (colon-separated)
+zmx-picker - lists zmx sessions, plus git and jj repos when given roots
 
 options:
   --print        Print directory and complete session name, each NUL-terminated,
                  instead of attaching; cancellation emits nothing
   -h, --help     Show this help message
   -V, --version  Print the version
+
+environment:
+  ZP_ROOT         Colon-separated repo roots, used when no roots are given
+  ZP_LABEL_MARKS  Space-separated key=value=icon entries; sessions with
+                  that label show the icon ahead of their name,
+                  e.g. 'state=working=◐ state=failed=❌'
 ```
 
 ### Shell setup

@@ -652,13 +652,17 @@ case ${1:-} in
 	;;
 -h | --help)
 	printf 'usage: %s [--print] [root ...]\n\n' "${0##*/}"
-	printf 'zmx-picker - lists zmx sessions, plus repos under any roots\n'
-	printf 'given as arguments or $ZP_ROOT (colon-separated)\n\n'
+	printf 'zmx-picker - lists zmx sessions, plus git and jj repos when given roots\n\n'
 	printf 'options:\n'
 	printf '  --print        Print directory and complete session name, each NUL-terminated,\n'
 	printf '                 instead of attaching; cancellation emits nothing\n'
 	printf '  -h, --help     Show this help message\n'
-	printf '  -V, --version  Print the version\n'
+	printf '  -V, --version  Print the version\n\n'
+	printf 'environment:\n'
+	printf '  ZP_ROOT         Colon-separated repo roots, used when no roots are given\n'
+	printf '  ZP_LABEL_MARKS  Space-separated key=value=icon entries; sessions with\n'
+	printf '                  that label show the icon ahead of their name,\n'
+	printf "                  e.g. 'state=working=◐ state=failed=❌'\n"
 	exit 0
 	;;
 -V | --version)
